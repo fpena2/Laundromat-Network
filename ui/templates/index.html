@@ -4,17 +4,22 @@
     <meta name="viewport" content="width=device-width, initial_scale=1.0, maximum-scale=1.0, user-scalable=0"/>
     <link rel="stylesheet" type="text/css" href="static/index.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
     <script src="static/index.js"></script>
 </head>
 
 <body>
 
     <div class="test">
-        test test test
+        red text test
     </div>
 
-    <div class="test2">
-        test 2, normal text
+    <input id="input" type="text">
+    <button onclick="sendMessageToServer()">send message to server</button>
+    <div>
+        response:
+    </div>
+    <div id="server_response">
     </div>
 
 </body>

@@ -1,14 +1,24 @@
 from flask import Flask, render_template
+from flask_socketio import SocketIO, send, emit
+
 app = Flask(__name__)
+socketio = SocketIO()
+socketio.init_app(app, cors_allowed_origins="https://test.theofficialjosh.com")
 
 print("running")
-
 
 @app.route("/")
 def index():
     return render_template('index.html')
 
+@socketio.on("inputDataEvent")
+def handle_inputDataEvent(data):
+    print("Received inputDataEvent data: " + str(data))
+    response = "Received your message: " + data
+    print("Sending response: " + response)
+    emit("inputDataResponse", response)
+
 if __name__ == "__main__":
-    app.run(ssl_context=('/etc/letsencrypt/live/test.theofficialjosh.com/fullchain.pem', '/etc/letsencrypt/live/test.theofficialjosh.com/privkey.pem'))
+    socketio.run(app, certfile='/etc/letsencrypt/live/test.theofficialjosh.com/fullchain.pem', keyfile='/etc/letsencrypt/live/test.theofficialjosh.com/privkey.pem')
 
 
