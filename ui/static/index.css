@@ -3,3 +3,21 @@
     color: red;
 }
 
+.device_on {
+    color: red;
+}
+
+.device_off {
+    color: green;
+}
+
+.device_list {
+    max-height: 0px;
+    overflow: hidden;
+    transition: max-height 0.5s ease-in;
+}
+
+.device_list.open {
+    max-height: 50px;
+}
+

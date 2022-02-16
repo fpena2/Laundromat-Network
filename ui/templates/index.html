@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 
 <head>
-    <meta name="viewport" content="width=device-width, initial_scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=0"/>
     <link rel="stylesheet" type="text/css" href="static/index.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
@@ -10,8 +10,17 @@
 
 <body>
 
-    <div class="test">
-        red text test
+    <div id="laundromatTemplate" class="laundromatTemplate">
+        <div id="name_ID">NAME</div>
+        <div class="device_list_title" id="washers_title_ID"> washers </div>
+        <div id="washers_ID" class="device_list">
+            <div id="washer1_ID"> Washer 1: <span class="device_on">ON</span></div>
+            <div id="washer2_ID"> Washer 2: <span class="device_off">OFF</span></div>
+        </div>
+        <div class="device_list_title" id="driers_title_ID"> driers </div>
+        <div id="driers_ID" class="device_list">
+            <div id="drier1_ID"> Drier 1: <span class="device_on">ON</span></div>
+        </div>
     </div>
 
     <input id="input" type="text">
