@@ -10,9 +10,9 @@ The user interface will utilize recommendations made by the AI and present them 
 
 ## Latency:
 We propose to address latency in the following aspects:
-Latency analysis will be performed on real-time streaming of data between a network of embedded devices, the cloud, and user.
-Per-minute availability of machines per laundry room. 
-Tradeoff analysis between compute time and predictive power
+* Latency analysis will be performed on real-time streaming of data between a network of embedded devices, the cloud, and user.
+* Per-minute availability of machines per laundry room. 
+* Tradeoff analysis between compute time and predictive power
 
 ## Parts List and Required Technology:
 ### Hardware:
