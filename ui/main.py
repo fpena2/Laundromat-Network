@@ -11,6 +11,26 @@ print("running")
 def index():
     return render_template('index.html')
 
+@app.route("/laundromats")
+def laundromats():
+    print("Received GET on /laundromats")
+    lm1 = {
+        "name": "cleaners",
+        "id": 1200,
+        "num_washers": 8,
+        "num_driers": 6,
+    }
+    lm2 = {
+        "name": "even_cleaners",
+        "id": 42,
+        "num_washers": 4,
+        "num_driers": 1,
+    }
+
+    response = {"laundromats": [lm1, lm2]}
+    return response
+
+
 @socketio.on("inputDataEvent")
 def handle_inputDataEvent(data):
     print("Received inputDataEvent data: " + str(data))
