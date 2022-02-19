@@ -1,6 +1,8 @@
 
 var socket = null
 
+testChart = null
+
 $("body").ready(function() {
     console.log("running");
 
@@ -15,6 +17,67 @@ $("body").ready(function() {
     });
 
     getLaundromatData()
+
+    const NUM_DATA_POINTS = 30
+    const MAX_VAL = 11
+    const CHART_UPDATE_T = 1000
+
+    const labels = new Array(NUM_DATA_POINTS)
+    for (var i = 0; i < labels.length; i ++) {
+        labels[i] = "T-" + (NUM_DATA_POINTS - (i + 1))
+    }
+
+    const data = {
+        labels: labels,
+        datasets: [{
+            label: 'first dataset',
+            backgroundColor: 'rgb(255, 99, 132)',
+            borderColor: 'rgb(255, 99, 132)',
+            data: new Array(NUM_DATA_POINTS).fill(0),
+            cubicInterpolationMode: 'monotone',
+            tension: 0.4
+        }]
+    };
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: MAX_VAL
+                }
+            },
+            animations: {
+                x: {
+                    easing: "linear",
+                    duration: CHART_UPDATE_T,
+                },
+                y:{
+                    easing: "linear",
+                    duration: 0
+                }
+            }
+        }
+    };
+
+    // we need to store charts when they are created to access them again unfortunately
+    // NOTE: data will not update realtime if # labels and # data points does not match up
+    const myChart = new Chart(
+        $("#firstChart"),
+        config
+    );
+
+    testChart = myChart
+
+    setInterval(function() {
+        var num = Math.random() * 10 + 1
+        testChart.data.datasets[0].data.shift()
+        testChart.data.datasets[0].data.push(num)
+        testChart.update()
+    }, CHART_UPDATE_T)
 
     return;
 });
