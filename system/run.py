@@ -13,6 +13,8 @@ try:
     filename = str(uuid.uuid4())
     with open("./logs/{}.csv".format(filename), "w") as f:
         while True:
-            print("{},{}/n".format(int(time.time()), a.get(2000)), file=f)
-except Exception:
-    pass
+            unixTime = str(int(time.time()))
+            current = str(a.get(2000))
+            print("{},{}/n".format(unixTime, current), file=f)
+except Exception as e:
+    print(e)
