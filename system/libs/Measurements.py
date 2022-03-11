@@ -1,5 +1,4 @@
 import time
-from scipy.fftpack import ifft2
 import board
 import busio
 from math import sqrt
@@ -7,7 +6,7 @@ import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
 
 
-class Measurement():
+class Measure():
     def __init__(self) -> None:
         self.FACTOR = 10  # 100A => 10mA => 10V
         self.ERROR = 1.11
@@ -21,10 +20,10 @@ class Measurement():
     def milli(self):
         return round(time.time() * 1000)
 
-    def get(self):
+    def get(self, interval):
         peak_voltage = 0
         t = self.milli()
-        while(self.milli() - t < 2000):
+        while(self.milli() - t < interval):
             voltage = self.chan.voltage
             if voltage > peak_voltage:
                 peak_voltage = voltage
@@ -32,6 +31,3 @@ class Measurement():
         # Coverts voltage to current
         return peak_voltage * self.FACTOR * self.ERROR
 
-
-a = Measurement()
-print(a.get())
