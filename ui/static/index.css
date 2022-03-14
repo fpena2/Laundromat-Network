@@ -19,6 +19,10 @@ body {
     transform: translateZ(0);
 }
 
+.chart_container {
+    max-width: 300px;
+}
+
 .device_list_title {
     font-weight: bold;
 }

@@ -17,13 +17,13 @@ def laundromats():
     lm1 = {
         "name": "cleaners",
         "id": 1200,
-        "num_washers": 8,
-        "num_driers": 6,
+        "num_washers": 2,
+        "num_driers": 2,
     }
     lm2 = {
         "name": "even_cleaners",
         "id": 42,
-        "num_washers": 4,
+        "num_washers": 1,
         "num_driers": 1,
     }
 

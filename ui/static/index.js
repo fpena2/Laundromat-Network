@@ -1,7 +1,12 @@
 
+// constants
+const CHART_UPDATE_T = 1000
+
 var socket = null
 
 testChart = null
+
+device_graphs = new Map();
 
 $("body").ready(function() {
     console.log("running");
@@ -17,67 +22,6 @@ $("body").ready(function() {
     });
 
     getLaundromatData()
-
-    const NUM_DATA_POINTS = 30
-    const MAX_VAL = 11
-    const CHART_UPDATE_T = 1000
-
-    const labels = new Array(NUM_DATA_POINTS)
-    for (var i = 0; i < labels.length; i ++) {
-        labels[i] = "T-" + (NUM_DATA_POINTS - (i + 1))
-    }
-
-    const data = {
-        labels: labels,
-        datasets: [{
-            label: 'first dataset',
-            backgroundColor: 'rgb(255, 99, 132)',
-            borderColor: 'rgb(255, 99, 132)',
-            data: new Array(NUM_DATA_POINTS).fill(0),
-            cubicInterpolationMode: 'monotone',
-            tension: 0.4
-        }]
-    };
-
-    const config = {
-        type: 'line',
-        data: data,
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: MAX_VAL
-                }
-            },
-            animations: {
-                x: {
-                    easing: "linear",
-                    duration: CHART_UPDATE_T,
-                },
-                y:{
-                    easing: "linear",
-                    duration: 0
-                }
-            }
-        }
-    };
-
-    // we need to store charts when they are created to access them again unfortunately
-    // NOTE: data will not update realtime if # labels and # data points does not match up
-    const myChart = new Chart(
-        $("#firstChart"),
-        config
-    );
-
-    testChart = myChart
-
-    setInterval(function() {
-        var num = Math.random() * 10 + 1
-        testChart.data.datasets[0].data.shift()
-        testChart.data.datasets[0].data.push(num)
-        testChart.update()
-    }, CHART_UPDATE_T)
 
     return;
 });
@@ -123,6 +67,19 @@ function getLaundromatData() {
         $("#laundromats").html(html)
 
         addDeviceListTitleOnClick()
+
+        for(var i = 0; i < response.laundromats.length; i ++) {
+            addGraphs(response.laundromats[i])
+        }
+
+        setInterval(function() {
+            for(const graph of device_graphs.values()) {
+                var num = Math.random() * 10 + 1
+                graph.data.datasets[0].data.shift()
+                graph.data.datasets[0].data.push(num)
+                graph.update()
+            }
+        }, CHART_UPDATE_T)
     });
 }
 
@@ -141,6 +98,74 @@ function buildLaundromatHTML(lm_info) {
     return html
 }
 
+function addGraphs(lm) {
+    for(var i = 0; i < lm.num_driers; i ++) {
+        var key = "" + lm.id + "drier" + i
+        var graph = getGraph(lm.id, "drier", i)
+        device_graphs.set(key, graph)
+    }
+
+    for(var i = 0; i < lm.num_washers; i ++) {
+        var key = "" + lm.id + "washer" + i
+        var graph = getGraph(lm.id, "washer", i)
+        device_graphs.set(key, graph)
+    }
+}
+
+function getGraph(lmid, d_name, d_id) {
+    const NUM_DATA_POINTS = 30
+    const MAX_VAL = 11
+
+    const labels = new Array(NUM_DATA_POINTS)
+    for (var i = 0; i < labels.length; i ++) {
+        labels[i] = "T-" + (NUM_DATA_POINTS - (i + 1))
+    }
+
+    const data = {
+        labels: labels,
+        datasets: [{
+            label: 'power (watts)',
+            backgroundColor: 'rgb(255, 99, 132)',
+            borderColor: 'rgb(255, 99, 132)',
+            data: new Array(NUM_DATA_POINTS).fill(0),
+            cubicInterpolationMode: 'monotone',
+            tension: 0.4
+        }]
+    };
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: MAX_VAL
+                }
+            },
+            animations: {
+                x: {
+                    easing: "linear",
+                    duration: CHART_UPDATE_T,
+                },
+                y:{
+                    easing: "linear",
+                    duration: 0
+                }
+            }
+        }
+    };
+
+    var graphname = "#" + lmid + d_name + d_id + "graph"
+    const myChart = new Chart(
+        $(graphname),
+        config
+    );
+
+    return myChart
+}
+
 // builds and returns HTML for a list of devices
 function buildDevicesHTML(d_name, num_devices, lmid) {
     var html = ""
@@ -152,8 +177,10 @@ function buildDevicesHTML(d_name, num_devices, lmid) {
     html += DEVICE_LIST_HTML.replaceAll("DEVICENAME", d_name).replaceAll("LMID", lmid)
 
     var DEVICE_STATUS_HTML = "<div id='DEVICENAME_DEVICEID_LMID'> DEVICENAME DEVICEID: <span class='device_off'>OFF</span></div>"
+    var DEVICE_GRAPH_HTML = "<div class='chart_container'><canvas id='LMIDDEVICENAMEDEVICEIDgraph'></canvas></div>"
     for(var i = 0; i < num_devices; i ++) {
         html += DEVICE_STATUS_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)
+        html += DEVICE_GRAPH_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)
     }
 
     html += "</div>"
