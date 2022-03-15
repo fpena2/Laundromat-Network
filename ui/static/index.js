@@ -16,9 +16,13 @@ $("body").ready(function() {
         console.log("websocket connected")
     });
 
-    socket.on("inputDataResponse", function(data) {
-        console.log("received input data response. Data: " + data)
-        $("#server_response").html(data)
+    socket.on("devicePowerUsage", function(data) {
+        var key = "" + data.lmid + data.device + data.deviceid
+        var graph = device_graphs.get(key)
+        var num = data.power_level
+        graph.data.datasets[0].data.shift()
+        graph.data.datasets[0].data.push(num)
+        graph.update()
     });
 
     getLaundromatData()
@@ -42,12 +46,15 @@ function addDeviceListTitleOnClick() {
     });
 }
 
-function sendMessageToServer() {
-    console.log("Sending message to server.")
-    var message = $("#input").val()
-    console.log("message: " + message)
-    socket.emit("inputDataEvent", message)
-    console.log("...done.")
+function requestDevicePowerUsage(lmid, device, deviceid) {
+    var debugstring = "" + lmid + device + deviceid
+
+    var data = {
+        "lmid": lmid,
+        "device": device,
+        "deviceid": deviceid
+    }
+    socket.emit("devicePowerUsageRequest", data)
 }
 
 function getLaundromatData() {
@@ -74,10 +81,7 @@ function getLaundromatData() {
 
         setInterval(function() {
             for(const graph of device_graphs.values()) {
-                var num = Math.random() * 10 + 1
-                graph.data.datasets[0].data.shift()
-                graph.data.datasets[0].data.push(num)
-                graph.update()
+                requestDevicePowerUsage(graph.lmid, graph.device, graph.id)
             }
         }, CHART_UPDATE_T)
     });
@@ -102,19 +106,25 @@ function addGraphs(lm) {
     for(var i = 0; i < lm.num_driers; i ++) {
         var key = "" + lm.id + "drier" + i
         var graph = getGraph(lm.id, "drier", i)
+        graph.lmid = lm.id
+        graph.device = "drier"
+        graph.id = i
         device_graphs.set(key, graph)
     }
 
     for(var i = 0; i < lm.num_washers; i ++) {
         var key = "" + lm.id + "washer" + i
         var graph = getGraph(lm.id, "washer", i)
+        graph.lmid = lm.id
+        graph.device = "washer"
+        graph.id = i
         device_graphs.set(key, graph)
     }
 }
 
 function getGraph(lmid, d_name, d_id) {
     const NUM_DATA_POINTS = 30
-    const MAX_VAL = 11
+    const MAX_VAL = 10
 
     const labels = new Array(NUM_DATA_POINTS)
     for (var i = 0; i < labels.length; i ++) {
@@ -176,7 +186,7 @@ function buildDevicesHTML(d_name, num_devices, lmid) {
     var DEVICE_LIST_HTML = "<div id='DEVICENAME_LMID' class='device_list'>"
     html += DEVICE_LIST_HTML.replaceAll("DEVICENAME", d_name).replaceAll("LMID", lmid)
 
-    var DEVICE_STATUS_HTML = "<div id='DEVICENAME_DEVICEID_LMID'> DEVICENAME DEVICEID: <span class='device_off'>OFF</span></div>"
+    var DEVICE_STATUS_HTML = "<div id='DEVICENAME_DEVICEID_LMID'> DEVICENAME DEVICEID:</div>"
     var DEVICE_GRAPH_HTML = "<div class='chart_container'><canvas id='LMIDDEVICENAMEDEVICEIDgraph'></canvas></div>"
     for(var i = 0; i < num_devices; i ++) {
         html += DEVICE_STATUS_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)

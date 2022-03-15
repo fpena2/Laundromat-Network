@@ -1,5 +1,6 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO, send, emit
+from random import randrange
 
 app = Flask(__name__)
 socketio = SocketIO()
@@ -30,13 +31,10 @@ def laundromats():
     response = {"laundromats": [lm1, lm2]}
     return response
 
-
-@socketio.on("inputDataEvent")
-def handle_inputDataEvent(data):
-    print("Received inputDataEvent data: " + str(data))
-    response = "Received your message: " + data
-    print("Sending response: " + response)
-    emit("inputDataResponse", response)
+@socketio.on("devicePowerUsageRequest")
+def handle_powerUsageRequest(data):
+    data["power_level"] = randrange(10)
+    emit("devicePowerUsage", data)
 
 if __name__ == "__main__":
     socketio.run(app, certfile='/etc/letsencrypt/live/test.theofficialjosh.com/fullchain.pem', keyfile='/etc/letsencrypt/live/test.theofficialjosh.com/privkey.pem')
