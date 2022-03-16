@@ -128,18 +128,21 @@ function getGraph(lmid, d_name, d_id) {
 
     const labels = new Array(NUM_DATA_POINTS)
     for (var i = 0; i < labels.length; i ++) {
-        labels[i] = "T-" + (NUM_DATA_POINTS - (i + 1))
+        labels[i] = "T-" + (NUM_DATA_POINTS - (i + 2))
     }
+
+    line_color = 'rgb(186, 0, 6)'
+    point_color = line_color
 
     const data = {
         labels: labels,
         datasets: [{
             label: 'power (watts)',
-            backgroundColor: 'rgb(255, 99, 132)',
-            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: point_color,
+            borderColor: line_color,
             data: new Array(NUM_DATA_POINTS).fill(0),
             cubicInterpolationMode: 'monotone',
-            tension: 0.4
+            tension: 1.0
         }]
     };
 
@@ -152,6 +155,10 @@ function getGraph(lmid, d_name, d_id) {
                 y: {
                     beginAtZero: true,
                     max: MAX_VAL
+                },
+                x: {
+                    min: 1,
+                    max: NUM_DATA_POINTS - 2,
                 }
             },
             animations: {
@@ -172,7 +179,6 @@ function getGraph(lmid, d_name, d_id) {
         $(graphname),
         config
     );
-
     return myChart
 }
 
