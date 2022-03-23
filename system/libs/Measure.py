@@ -20,10 +20,10 @@ class Measure():
     def milli(self):
         return round(time.time() * 1000)
 
-    def get(self, interval):
+    def get(self, *, interval_ms):
         peak_voltage = 0
         t = self.milli()
-        while(self.milli() - t < interval):
+        while(self.milli() - t < interval_ms):
             voltage = self.chan.voltage
             if voltage > peak_voltage:
                 peak_voltage = voltage

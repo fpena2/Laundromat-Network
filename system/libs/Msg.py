@@ -1,7 +1,6 @@
 import boto3
 import io
 
-
 class msgController:
     def __init__(self, bucket):
         self.s3 = boto3.client("s3")

@@ -24,7 +24,6 @@ def init():
 
 
 def animate(i):
-    # print(i)
     xdata.append(xs[i])
     ydata.append(ys[i])
     line.set_data(xdata, ydata)
