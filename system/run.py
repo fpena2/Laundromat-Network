@@ -15,7 +15,6 @@ devID = os.uname().nodename
 # Initialize Objects 
 mObj = Measure()
 cObj = SocketIO(url)
-cObj.setup()
 cObj.run()
 
 # Testing Params

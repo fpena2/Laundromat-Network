@@ -1,9 +1,9 @@
 import socketio 
+import threading
 
-class SocketIO():
-    sio = socketio.Client(logger=True, engineio_logger=True)
-
+class SocketIO(threading.local):
     def __init__(self, url ) -> None:
+        self.sio = socketio.Client(logger=True, engineio_logger=True)
         self.url = f"http://{url}/"
 
     def setup(self):
@@ -11,6 +11,7 @@ class SocketIO():
     
     def run(self):
         self.setup()
+        # TODO: https://github.com/miguelgrinberg/python-socketio/discussions/773
         self.sio.connect(self.url)
         # self.sio.wait()
 
