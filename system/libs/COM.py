@@ -14,8 +14,8 @@ class SocketIO():
         self.sio.connect(self.url)
         # self.sio.wait()
 
-    def send(self, time_unix, current_amps):
-        self.sio.emit('data', {'time': str(time_unix), 'current': str(current_amps)})
+    def send(self, time_unix, current_amps, id):
+        self.sio.emit('data', {'time': time_unix, 'current': current_amps, 'ID': id})
     
     def kill(self):
         self.sio.disconnect()

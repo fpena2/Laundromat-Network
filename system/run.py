@@ -10,6 +10,7 @@ from COM import SocketIO
 
 # Initialize Params 
 url = "ec2-18-191-244-170.us-east-2.compute.amazonaws.com/socketio"
+devID = os.uname().nodename
 
 # Initialize Objects 
 mObj = Measure()
@@ -38,7 +39,7 @@ try:
             f.flush()
 
             # Push to server 
-            cObj.send(unixTime, current)
+            cObj.send(unixTime, current, devID)
             
             # Print to console 
             print(msg)
