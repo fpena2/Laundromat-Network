@@ -2,6 +2,7 @@ import boto3, os, time, json, asyncio
 
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
+from bson import json_util
 
 from pymongo import MongoClient
 
