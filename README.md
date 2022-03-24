@@ -13,9 +13,17 @@ sudo apt-get install librtmp-dev
 sudo pip install python-librtmp
 ```
 
+# Installing MongoDB on Ubuntu
+```
+\\ Read MongoDB docs to add the right package repository to apt-get
+
+sudo apt-get install mongodb-org
+```
+
 # Starting nginx and mongodb services
 ```
-sudo service nginx start
-sudo service mongod start
+sudo service nginx start		\\ nginx
+sudo service mongod start		\\ mongodo
+sudo service redis start		\\ redis
 ```
 
