@@ -17,11 +17,40 @@ $("body").ready(function() {
     });
 
     socket.on("devicePowerUsage", function(data) {
+        var rcv_time = Date.now() / 1000
+        var rcd_time = data.recorded_time;
+        var difference = rcv_time - rcd_time
+		
         var key = "" + data.lmid + data.device + data.deviceid
         var graph = device_graphs.get(key)
         var num = data.power_level
         graph.data.datasets[0].data.shift()
         graph.data.datasets[0].data.push(num)
+
+		// calculate latency of data point
+		if (graph.lat_avgs.length > 10) {
+			graph.shift()
+		}
+		graph.push(difference)
+		var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
+		console.log("avg_lat: " + avg_lat)
+
+		if (difference > 15) {
+			$("#" + data.device + "_" + data.deviceid + "_" + data.lmid)
+				.html(data.device + " " + data.deviceid + "(appears to be off):")
+		}
+		else {
+			$("#" + data.device + "_" + data.deviceid + "_" + data.lmid)
+				.html(data.device + " " + data.deviceid + ":")
+		}
+
+		// calculate the max value in the data. Add 1 so it is never 0
+		var max = Math.max.apply(null, graph.data.datasets[0].data)
+		if (max <= 0) {
+			max = 1
+		}
+		graph.options.scales.y.max = 1.05 * max
+
         graph.update()
     });
 
@@ -61,7 +90,8 @@ function getLaundromatData() {
     console.log("Requesting laundromat data from server")
     $.ajax({
         method: "GET",
-        url: "/laundromat"
+        url: "/laundromat",
+        data: { "longitude": 38.78169995906734, "latitude": -90.52582140779946 }
     }).done(function(response) {
         console.log("received laundromat data... response:")
         console.log(response)
@@ -109,6 +139,7 @@ function addGraphs(lm) {
         graph.lmid = lm.id
         graph.device = "drier"
         graph.id = i
+		graph.lat_avgs = []
         device_graphs.set(key, graph)
     }
 
@@ -118,6 +149,7 @@ function addGraphs(lm) {
         graph.lmid = lm.id
         graph.device = "washer"
         graph.id = i
+		graph.lat_avgs = []
         device_graphs.set(key, graph)
     }
 }
@@ -137,7 +169,7 @@ function getGraph(lmid, d_name, d_id) {
     const data = {
         labels: labels,
         datasets: [{
-            label: 'power (watts)',
+            label: 'current (amps)',
             backgroundColor: point_color,
             borderColor: line_color,
             data: new Array(NUM_DATA_POINTS).fill(0),

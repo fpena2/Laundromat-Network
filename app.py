@@ -3,9 +3,10 @@ from flask_socketio import SocketIO, send, emit
 from flask_caching import Cache
 from engineio.payload import Payload
 
-import logging, json, asyncio
+import logging, json, asyncio, time
 
 from storage import get_store
+from dotenv import load_dotenv
 
 # server config
 app = Flask(__name__)
@@ -25,10 +26,11 @@ mongo = get_store("mongo")
 
 # from testing
 lr_payload = 0
-
+lr_time = time.time()
 
 # routes
 @app.route("/", methods = ["GET"])
+@cache.cached(timeout=50)
 def index():
     request_origin = request.environ.get("HTTP_ORIGIN", "")
     app.logger.info(f"GET - /index.html from {request_origin}")
@@ -42,14 +44,20 @@ def get_laundromats():
         "num_washers": 1,
         "num_driers": 0,
     }
+
+    lon, lat = request.args.get("longitude", 0.0), request.args.get("latitude", 0.0)
     request_origin = request.environ.get("HTTP_ORIGIN", "")
-    app.logger.info(f"GET - /laundromat from {request_origin}")
+    app.logger.info(f"GET - /laundromat from {request_origin}, ({lon}, {lat}) ")
     payload = {"laundromats": [lm1], "message": "success"}
     return payload, 200
 
 @app.route("/", methods = ["POST"])
 def get_data():
+    global lr_payload
+    global lr_time
     payload = request.get_json(cache = False, force = True)
+    lr_payload = float(payload["current"])
+    lr_time = float(payload["time"])
     asyncio.run(mongo.store(payload))
     #s3.store(payload)
     app.logger.info(f"HTTP - Received: {payload}")
@@ -59,9 +67,11 @@ def get_data():
 @socketio.on("data")
 def handle_message(data):
     global lr_payload
-    lr_payload = int(data["current"])
+    global lr_time
+    lr_payload = float(data["current"])
+    lr_time = float(data["time"])
     serialized_data = json.dumps(data)
-    #asyncio.run(mongo.store(data))
+    asyncio.run(mongo.store(data))
     #asyncio.run(s3.store(data))
     emit("data", serialized_data)
     app.logger.info(f"WebSocket - Received: {data} from Raspberry Pi")
@@ -69,10 +79,11 @@ def handle_message(data):
 @socketio.on("devicePowerUsageRequest")
 def handle_data_request(data):
     global lr_payload
+    global lr_time
     data["power_level"] = lr_payload
+    data["recorded_time"] = lr_time 
     emit("devicePowerUsage", data, broadcast = False)
     app.logger.info(f"Websocket - Received: {data} from client")
-
 
 @app.errorhandler(500)
 @app.errorhandler(404)
