@@ -29,21 +29,20 @@ $("body").ready(function() {
 
 		// calculate latency of data point
 		if (graph.lat_avgs.length > 10) {
-			graph.shift()
+			graph.lat_avgs.shift()
 		}
-		graph.push(difference)
+		graph.lat_avgs.push(difference)
 		var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
-		console.log("avg_lat: " + avg_lat)
+		var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2) 
 
-		if (difference > 15) {
-			$("#" + data.device + "_" + data.deviceid + "_" + data.lmid)
-				.html(data.device + " " + data.deviceid + "(appears to be off):")
-		}
-		else {
-			$("#" + data.device + "_" + data.deviceid + "_" + data.lmid)
-				.html(data.device + " " + data.deviceid + ":")
+		var lat_string = data.device + " " + data.deviceid + ". latency: " + avg_lat + " s"
+
+		if (avg_lat > 15) {
+			lat_string += " (appears to be off)"
 		}
 
+		$("#" + data.device + "_" + data.deviceid + "_" + data.lmid).html(lat_string)
+		
 		// calculate the max value in the data. Add 1 so it is never 0
 		var max = Math.max.apply(null, graph.data.datasets[0].data)
 		if (max <= 0) {
@@ -76,8 +75,6 @@ function addDeviceListTitleOnClick() {
 }
 
 function requestDevicePowerUsage(lmid, device, deviceid) {
-    var debugstring = "" + lmid + device + deviceid
-
     var data = {
         "lmid": lmid,
         "device": device,
@@ -127,17 +124,17 @@ function buildLaundromatHTML(lm_info) {
     html += LM_NAME_HTML.replaceAll("LMID", lm_info.id).replaceAll("LMNAME", lm_info.name)
 
     html += buildDevicesHTML("washer", lm_info.num_washers, lm_info.id)
-    html += buildDevicesHTML("drier", lm_info.num_driers, lm_info.id)
+    html += buildDevicesHTML("dryer", lm_info.num_dryers, lm_info.id)
     
     return html
 }
 
 function addGraphs(lm) {
-    for(var i = 0; i < lm.num_driers; i ++) {
-        var key = "" + lm.id + "drier" + i
-        var graph = getGraph(lm.id, "drier", i)
+    for(var i = 0; i < lm.num_dryers; i ++) {
+        var key = "" + lm.id + "dryer" + i
+        var graph = getGraph(lm.id, "dryer", i)
         graph.lmid = lm.id
-        graph.device = "drier"
+        graph.device = "dryer"
         graph.id = i
 		graph.lat_avgs = []
         device_graphs.set(key, graph)

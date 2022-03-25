@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, send, emit
 from flask_caching import Cache
 from engineio.payload import Payload
 
-import logging, json, asyncio, time
+import copy, logging, json, asyncio, time
 
 from storage import get_store
 from dotenv import load_dotenv
@@ -25,8 +25,17 @@ s3 = get_store("s3")
 mongo = get_store("mongo")
 
 # from testing
-lr_payload = 0
-lr_time = time.time()
+washer_lr_payload = {
+        "power_level": 0.0,
+        "device": "washer",
+        "recorded_time": time.time() 
+    }
+
+dryer_lr_payload = {
+        "power_level": 0.0,
+        "device": "dryer",
+        "recorded_time": time.time() 
+    }
 
 # routes
 @app.route("/", methods = ["GET"])
@@ -42,7 +51,7 @@ def get_laundromats():
         "name": "cleaners",
         "id": 1200,
         "num_washers": 1,
-        "num_driers": 0,
+        "num_dryers": 1,
     }
 
     lon, lat = request.args.get("longitude", 0.0), request.args.get("latitude", 0.0)
@@ -53,12 +62,12 @@ def get_laundromats():
 
 @app.route("/", methods = ["POST"])
 def get_data():
-    global lr_payload
-    global lr_time
+    global dryer_lr_payload
     payload = request.get_json(cache = False, force = True)
-    lr_payload = float(payload["current"])
-    lr_time = float(payload["time"])
-    asyncio.run(mongo.store(payload))
+    dryer_lr_payload["power_level"] = float(payload["current"])
+    dryer_lr_payload["recorded_time"] = float(payload["time"])
+    dryer_lr_payload["device"] = "dryer"
+    #asyncio.run(mongo.store(payload))
     #s3.store(payload)
     app.logger.info(f"HTTP - Received: {payload}")
     response = {"message": "success"}
@@ -66,23 +75,31 @@ def get_data():
 
 @socketio.on("data")
 def handle_message(data):
-    global lr_payload
-    global lr_time
-    lr_payload = float(data["current"])
-    lr_time = float(data["time"])
+    global washer_lr_payload
+    washer_lr_payload["power_level"] = float(data["current"])
+    washer_lr_payload["recorded_time"] = float(data["time"])
+    washer_lr_payload["device"] = "washer"
     serialized_data = json.dumps(data)
-    asyncio.run(mongo.store(data))
+    #asyncio.run(mongo.store(data))
     #asyncio.run(s3.store(data))
     emit("data", serialized_data)
     app.logger.info(f"WebSocket - Received: {data} from Raspberry Pi")
 
 @socketio.on("devicePowerUsageRequest")
 def handle_data_request(data):
-    global lr_payload
-    global lr_time
-    data["power_level"] = lr_payload
-    data["recorded_time"] = lr_time 
-    emit("devicePowerUsage", data, broadcast = False)
+    global dryer_lr_payload
+    global washer_lr_payload
+
+    if data["device"].lower() == "washer":
+        #data["device"] = washer_lr_payload["device"] 
+        data["power_level"] = washer_lr_payload["power_level"]
+        data["recorded_time"] = washer_lr_payload["recorded_time"]
+        emit("devicePowerUsage", data, broadcast = False)
+    else:
+        #data["device"] = dryer_lr_payload["device"] 
+        data["power_level"] = dryer_lr_payload["power_level"]
+        data["recorded_time"] = dryer_lr_payload["recorded_time"]
+        emit("devicePowerUsage", data, broadcast = False)
     app.logger.info(f"Websocket - Received: {data} from client")
 
 @app.errorhandler(500)
