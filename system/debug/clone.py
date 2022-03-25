@@ -15,7 +15,7 @@ if (libsPath := main_dir.joinpath("libs/")):
 
 # Testing Params
 parser = argparse.ArgumentParser()
-parser.add_argument('--pool', type=int, default=5)
+parser.add_argument('--pool', type=int, default=1)
 opts = parser.parse_args()
 
 
@@ -24,7 +24,7 @@ def work():
     print("Name: {}".format(name))
 
     # Setup Object
-    url = "ec2-18-191-244-170.us-east-2.compute.amazonaws.com/socketio"
+    url = "ec2-52-14-96-75.us-east-2.compute.amazonaws.com"
     cObj = SocketIO(url)
     cObj.run()
 

@@ -9,7 +9,7 @@ from Measure import Measure
 from COM import SocketIO
 
 # Initialize Params 
-url = "ec2-18-191-244-170.us-east-2.compute.amazonaws.com/socketio"
+url = "ec2-52-14-96-75.us-east-2.compute.amazonaws.com"
 devID = os.uname().nodename
 
 # Initialize Objects 
