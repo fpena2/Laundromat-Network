@@ -8,6 +8,7 @@ class SocketIO(threading.local):
     def __init__(self, url ) -> None:
         self.sio = socketio.Client(logger=True, engineio_logger=True)
         self.url = f"http://{url}/"
+        self.isConnected = False
 
     def setup(self):
         self.call_backs() 
@@ -23,25 +24,26 @@ class SocketIO(threading.local):
         self.sio.disconnect()
 
     def connect_loop(self):
-        while True:
+        while not self.isConnected:
             try:
                 self.sio.connect(self.url)
             except Exception as e:
-                print(e)
+                print("--EXCEPTION:", e)
             else:
-                self.sio.wait()
+                self.isConnected = True
             print("--DEBUG: attempting to reconnect...")
-            time.sleep(2)
+            time.sleep(5)
         
     def call_backs(self):
         @self.sio.event
         def connect():
-            print('--DEBUG: connection established')
+            print('--DEBUG: connected to server')
 
         @self.sio.event
         def disconnect():
             print('--DEBUG: disconnected from server')
             self.connect_loop()
+
                 
 class HTTPIO(threading.local):
     def __init__(self, url) -> None:
