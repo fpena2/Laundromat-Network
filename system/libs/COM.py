@@ -14,14 +14,25 @@ class SocketIO(threading.local):
     
     def run(self):
         self.setup()
-        self.sio.connect(self.url)
+        self.connect_loop()
 
     def send(self, time_unix, current_amps, id):
         self.sio.emit('data', {'time': time_unix, 'current': current_amps, 'ID': id})
-    
+
     def kill(self):
         self.sio.disconnect()
 
+    def connect_loop(self):
+        while True:
+            try:
+                self.sio.connect(self.url)
+            except Exception as e:
+                print(e)
+            else:
+                self.sio.wait()
+            print("--DEBUG: attempting to reconnect...")
+            time.sleep(2)
+        
     def call_backs(self):
         @self.sio.event
         def connect():
@@ -30,18 +41,8 @@ class SocketIO(threading.local):
         @self.sio.event
         def disconnect():
             print('--DEBUG: disconnected from server')
-            while True:
-                try:
-                    self.sio.connect(self.url)
-                except Exception as e:
-                    print(e)
-                else:
-                    self.sio.wait()
-                print("--DEBUG: attempting to reconnect...")
-                time.sleep(2)
+            self.connect_loop()
                 
-
-
 class HTTPIO(threading.local):
     def __init__(self, url) -> None:
         self.url = f"http://{url}/"
@@ -50,4 +51,4 @@ class HTTPIO(threading.local):
     def send(self, time_unix, current_amps, id ):
         msg = {'time': time_unix, 'current': current_amps, 'ID': id}
         response = requests.post(self.url, json = msg, headers = self.headers)
-        print("Got: ", response, " from: ", json.dumps(msg))
+        print("Got: ", response, " With: ", json.dumps(msg))
