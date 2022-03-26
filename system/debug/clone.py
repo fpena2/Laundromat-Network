@@ -23,7 +23,7 @@ def work():
     print("Name: {}".format(name))
 
     # Setup Object
-    url = "http://ec2-52-14-96-75.us-east-2.compute.amazonaws.com"
+    url = "ec2-52-14-96-75.us-east-2.compute.amazonaws.com"
     if opts.type == 2:
         cObj = SocketIO(url)
         cObj.run()
