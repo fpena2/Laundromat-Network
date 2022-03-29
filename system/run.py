@@ -44,4 +44,4 @@ try:
             print(msg)
 
 except Exception as e:
-    print(e)
+    print("--EXCEPTION: ", e)

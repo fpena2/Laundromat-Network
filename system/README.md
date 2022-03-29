@@ -1,9 +1,10 @@
 ## Configuration 
-
+* Use Raspberry Pi OS with desktop (Debian version: 11 (bullseye) or newer) 
 * Enable the I2C interface on the Raspberry Pi using `raspi-config`
-* Install the ADC library:
+* Install the following libraries:
     ```
-    $ pip3 install ADS1115==0.2.1
+    $ sudo pip install adafruit-circuitpython-ads1x15
+    $ pip install python-socketio
     ```
 
 ### Connect the ADC to the Pi as follows:

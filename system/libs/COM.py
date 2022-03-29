@@ -18,7 +18,10 @@ class SocketIO(threading.local):
         self.connect_loop()
 
     def send(self, time_unix, current_amps, id):
-        self.sio.emit('data', {'time': time_unix, 'current': current_amps, 'ID': id})
+        try: 
+            self.sio.emit('data', {'time': time_unix, 'current': current_amps, 'ID': id})
+        except Exception as e:
+            print("--EXCEPTION: ", e)
 
     def kill(self):
         self.sio.disconnect()
