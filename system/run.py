@@ -8,19 +8,21 @@ sys.path.append(os.path.abspath("./libs/"))
 from Measure import Measure
 from COM import SocketIO
 
+# Testing Params
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', dest='__debug__', default=False, action='store_true')
+parser.add_argument('-f', dest='__offline__', default=False, action='store_true')
+args = parser.parse_args()
+
 # Initialize Params 
 url = "ec2-52-14-96-75.us-east-2.compute.amazonaws.com"
 devID = os.uname().nodename
 
 # Initialize Objects 
 mObj = Measure()
-cObj = SocketIO(url)
-cObj.run()
-
-# Testing Params
-parser = argparse.ArgumentParser()
-parser.add_argument('-d', dest='__debug__', default=False, action='store_true')
-args = parser.parse_args()
+if not args.__offline__:
+    cObj = SocketIO(url)
+    cObj.run()
 
 try: 
     filename = str(uuid.uuid4())
@@ -38,7 +40,8 @@ try:
             f.flush()
 
             # Push to server 
-            cObj.send(unixTime, current, devID)
+            if not args.__offline__:
+                cObj.send(unixTime, current, devID)
             
             # Print to console 
             print(msg)
