@@ -12,3 +12,10 @@
 * ADS1x15 GND to Raspberry Pi GND
 * ADS1x15 SCL to Raspberry Pi SCL
 * ADS1x15 SDA to Raspberry Pi SDA
+
+## Running 
+```
+$ python run.py 
+```
+* For offline mode use the ```-f``` argument
+* For development mode use the ```-d``` argument 
