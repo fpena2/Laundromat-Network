@@ -14,8 +14,20 @@
 * ADS1x15 SDA to Raspberry Pi SDA
 
 ## Running 
+The main application can be run with the following command: 
 ```
 $ python run.py 
 ```
-* For offline mode use the ```-f``` argument
-* For development mode use the ```-d``` argument 
+* For offline mode use the ```-f``` flag
+    * This mode will prevent the device from sending data to the server
+* For development mode use the ```-d``` flag 
+    * This mode will force the device to output data to a ```test.csv``` file
+
+The multithread application can spawn 10 clones which send data via the HTTP interface with the following command: 
+```
+$ python clone.py --pool 10 --type 1
+```
+* Specify the number of clones with the ```--pool``` argument 
+* Specify the type of communication with the ```--type``` argument 
+    * HTTP: ```--type 1``` 
+    * SOCKETS: ```--type 2```
