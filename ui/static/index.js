@@ -1,4 +1,3 @@
-
 // constants
 const CHART_UPDATE_T = 1000
 
@@ -6,24 +5,28 @@ var socket = null
 
 testChart = null
 
+ModeEnum = {
+    SOCKET: 0,
+    HTTP: 1,
+}
+
+MODE = ModeEnum.SOCKET
+
 device_graphs = new Map();
 
 $("body").ready(function() {
     console.log("running");
 
-    socket = io();
-    socket.on('connect', function() {
-        console.log("websocket connected")
-    });
+    if (MODE == ModeEnum.SOCKET) {
+        socket = io();
+        socket.on('connect', function() {
+            console.log("websocket connected")
+        });
 
-    socket.on("devicePowerUsage", function(data) {
-        var key = "" + data.lmid + data.device + data.deviceid
-        var graph = device_graphs.get(key)
-        var num = data.power_level
-        graph.data.datasets[0].data.shift()
-        graph.data.datasets[0].data.push(num)
-        graph.update()
-    });
+        socket.on("devicePowerUsage", function(data) {
+            updateGraphData(data)
+        });
+    }
 
     getLaundromatData()
 
@@ -47,21 +50,76 @@ function addDeviceListTitleOnClick() {
 }
 
 function requestDevicePowerUsage(lmid, device, deviceid) {
-    var debugstring = "" + lmid + device + deviceid
-
     var data = {
         "lmid": lmid,
         "device": device,
         "deviceid": deviceid
     }
-    socket.emit("devicePowerUsageRequest", data)
+
+    // here is where we decide to use HTTP or SOCKET
+    if (MODE == ModeEnum.SOCKET) {
+        socket.emit("devicePowerUsageRequest", data)
+    }
+    else if (MODE == ModeEnum.HTTP) {
+        $.ajax({
+            method: "GET",
+            url: "/devicePowerUsageRequest",
+            data: data
+        }).done(function(response) {
+            updateGraphData(response)
+        });
+
+    }
+}
+
+function updateGraphData(data) {
+    var rcv_time = Date.now() / 1000
+    var rcd_time = data.recorded_time;
+    var difference = rcv_time - rcd_time
+
+    var key = "" + data.lmid + data.device + data.deviceid
+    var graph = device_graphs.get(key)
+    var num = data.power_level
+    graph.data.datasets[0].data.shift()
+    graph.data.datasets[0].data.push(num)
+
+    // calculate latency of data point
+    if (graph.lat_avgs.length > 100) {
+        graph.lat_avgs.shift()
+    }
+    graph.lat_avgs.push(difference)
+    var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
+    var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2)
+
+    var lat_string = data.device + " " + data.deviceid + ". latency: " + avg_lat + " s"
+
+    if (graph.lat_print_count % 300 == 0) {
+        console.log(lat_string)
+    }
+    graph.lat_print_count ++
+
+    if (avg_lat > 15) {
+        lat_string += " (appears to be disconnected)"
+    }
+
+    $("#" + data.device + "_" + data.deviceid + "_" + data.lmid).html(lat_string)
+
+    // calculate the max value in the data. Add 1 so it is never 0
+    var max = Math.max.apply(null, graph.data.datasets[0].data)
+    if (max <= 0) {
+        max = 1
+    }
+    graph.options.scales.y.max = 1.05 * max
+
+    graph.update()
 }
 
 function getLaundromatData() {
     console.log("Requesting laundromat data from server")
     $.ajax({
         method: "GET",
-        url: "/laundromats"
+        url: "/laundromat",
+        data: { "longitude": 38.78169995906734, "latitude": -90.52582140779946 }
     }).done(function(response) {
         console.log("received laundromat data... response:")
         console.log(response)
@@ -97,18 +155,20 @@ function buildLaundromatHTML(lm_info) {
     html += LM_NAME_HTML.replaceAll("LMID", lm_info.id).replaceAll("LMNAME", lm_info.name)
 
     html += buildDevicesHTML("washer", lm_info.num_washers, lm_info.id)
-    html += buildDevicesHTML("drier", lm_info.num_driers, lm_info.id)
-    
+    html += buildDevicesHTML("dryer", lm_info.num_dryers, lm_info.id)
+
     return html
 }
 
 function addGraphs(lm) {
-    for(var i = 0; i < lm.num_driers; i ++) {
-        var key = "" + lm.id + "drier" + i
-        var graph = getGraph(lm.id, "drier", i)
+    for(var i = 0; i < lm.num_dryers; i ++) {
+        var key = "" + lm.id + "dryer" + i
+        var graph = getGraph(lm.id, "dryer", i)
         graph.lmid = lm.id
-        graph.device = "drier"
+        graph.device = "dryer"
         graph.id = i
+        graph.lat_avgs = []
+        graph.lat_print_count = 0
         device_graphs.set(key, graph)
     }
 
@@ -118,6 +178,8 @@ function addGraphs(lm) {
         graph.lmid = lm.id
         graph.device = "washer"
         graph.id = i
+        graph.lat_avgs = []
+        graph.lat_print_count = 0
         device_graphs.set(key, graph)
     }
 }
@@ -137,7 +199,7 @@ function getGraph(lmid, d_name, d_id) {
     const data = {
         labels: labels,
         datasets: [{
-            label: 'power (watts)',
+            label: 'current (amps)',
             backgroundColor: point_color,
             borderColor: line_color,
             data: new Array(NUM_DATA_POINTS).fill(0),

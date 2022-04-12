@@ -7,8 +7,8 @@ if __name__ == "__main__":
 
     socket = socketio.Client(logger=True)
 
-    socket.connect("http://ec2-18-191-244-170.us-east-2.compute.amazonaws.com")
-    #socket.connect("https://test.theofficialjosh.com")
+    #socket.connect("http://ec2-18-191-244-170.us-east-2.compute.amazonaws.com")
+    socket.connect("https://test.theofficialjosh.com")
 
     while True:
         print("Sending a message")
