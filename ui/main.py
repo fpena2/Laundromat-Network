@@ -19,8 +19,8 @@ lm_list = [
         {
             "name": "lm1",
             "id": 1200,
-            "num_washers": 2,
-            "num_dryers": 2,
+            "num_washers": 8,
+            "num_dryers": 8,
         },
         {
             "name": "lm2",
@@ -33,14 +33,7 @@ lm_list = [
 @app.route("/laundromat")
 def laundromats():
     print("Received GET on /laundromats")
-    lm1 = {
-        "name": "cleaners",
-        "id": 1200,
-        "num_washers": 1,
-        "num_dryers": 0,
-    }
-
-    response = {"laundromats": lm_list}
+    response = {"laundromats": [lm_list[0]]}
     return response
 
 @socketio.on("devicePowerUsageRequest")

@@ -91,7 +91,7 @@ function updateGraphData(data) {
     var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
     var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2)
 
-    var lat_string = data.device + " " + data.deviceid + ". latency: " + avg_lat + " s"
+    var lat_string = "Latency: " + avg_lat + " s"
 
     if (graph.lat_print_count % 300 == 0) {
         console.log(lat_string)
@@ -102,7 +102,10 @@ function updateGraphData(data) {
         lat_string += " (appears to be disconnected)"
     }
 
-    $("#" + data.device + "_" + data.deviceid + "_" + data.lmid).html(lat_string)
+    $("#" + key + "latency").html(lat_string)
+
+    $("#" + key + "state").html("State: " + data.state)
+    $("#" + key + "ect").html("ECT: " + data.ect)
 
     // calculate the max value in the data. Add 1 so it is never 0
     var max = Math.max.apply(null, graph.data.datasets[0].data)
@@ -149,11 +152,6 @@ function getLaundromatData() {
 function buildLaundromatHTML(lm_info) {
     var html = ""
 
-    // Build the lm name html first
-    //    LMID = laundromat id i.e. 1234 or 15000
-    var LM_NAME_HTML = "<div id='lmname_LMID'>LMNAME</div>"
-    html += LM_NAME_HTML.replaceAll("LMID", lm_info.id).replaceAll("LMNAME", lm_info.name)
-
     html += buildDevicesHTML("washer", lm_info.num_washers, lm_info.id)
     html += buildDevicesHTML("dryer", lm_info.num_dryers, lm_info.id)
 
@@ -193,7 +191,7 @@ function getGraph(lmid, d_name, d_id) {
         labels[i] = "T-" + (NUM_DATA_POINTS - (i + 2))
     }
 
-    line_color = 'rgb(186, 0, 6)'
+    line_color = 'rgb(0, 200, 20)'
     point_color = line_color
 
     const data = {
@@ -248,20 +246,21 @@ function getGraph(lmid, d_name, d_id) {
 function buildDevicesHTML(d_name, num_devices, lmid) {
     var html = ""
 
-    var DEVICE_LIST_TITLE_HTML = "<div class='device_list_title' id='DEVICENAME_title_LMID'> DEVICENAMEs </div>"
-    html += DEVICE_LIST_TITLE_HTML.replaceAll("DEVICENAME", d_name).replaceAll("LMID", lmid);
-
-    var DEVICE_LIST_HTML = "<div id='DEVICENAME_LMID' class='device_list'>"
-    html += DEVICE_LIST_HTML.replaceAll("DEVICENAME", d_name).replaceAll("LMID", lmid)
-
-    var DEVICE_STATUS_HTML = "<div id='DEVICENAME_DEVICEID_LMID'> DEVICENAME DEVICEID:</div>"
-    var DEVICE_GRAPH_HTML = "<div class='chart_container'><canvas id='LMIDDEVICENAMEDEVICEIDgraph'></canvas></div>"
-    for(var i = 0; i < num_devices; i ++) {
-        html += DEVICE_STATUS_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)
-        html += DEVICE_GRAPH_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)
+    var DEVICE_HTML = 
+        "<div class=\"devcontainer\">" +
+            "<div><b>DEVICENAME DEVICEID</b></div>" +
+            "<div id=\"FULLIDstate\">State: ...</div>" +
+            "<div id=\"FULLIDect\">ECT: ...</div>" +
+            "<div id=\"FULLIDlatency\">Latency: ...</div>" +
+            "<div><canvas id='FULLIDgraph'></canvas></div>" +
+        "</div>"
+    DEVICE_HTML = DEVICE_HTML.replaceAll("LMID", lmid)
+    DEVICE_HTML = DEVICE_HTML.replaceAll("DEVICENAME", d_name)
+    for (var i = 0; i < num_devices; i ++) {
+        var fullid = "" + lmid + d_name + i
+        html += DEVICE_HTML.replaceAll("DEVICEID", i)
+                           .replaceAll("FULLID", fullid)
     }
-
-    html += "</div>"
 
     return html
 }
