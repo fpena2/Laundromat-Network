@@ -43,6 +43,8 @@ def work():
     # Main work
     start = np.random.randint(template_size)
     while start < template_size:
+        # Clean up the name
+        name = ''.join([i for i in name if i.isalnum()])
         # Send data
         utime = str(int(time.time()))
         current = str(template[start][1])

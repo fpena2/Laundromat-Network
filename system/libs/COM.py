@@ -59,9 +59,8 @@ class HTTPIO(threading.local):
 
     def __init__(self, url) -> None:
         self.url = f"http://{url}"
-        self.headers = {"Content-Type": "application/json", "charset": "utf-8"}
 
     def send(self, time_unix, current_amps, id):
         msg = {'time': time_unix, 'current': current_amps, 'ID': id}
-        response = requests.post(self.url, json=msg, headers=self.headers)
+        response = requests.post(self.url, msg)
         print("Got: ", response, " With: ", json.dumps(msg))
