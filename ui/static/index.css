@@ -33,6 +33,7 @@ body {
     flex-direction: row;
     flex-wrap: wrap;
     flex-flow: space-around;
+    justify-content: space-around;
 }
 
 .devcontainer {

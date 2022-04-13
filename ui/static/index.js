@@ -3,16 +3,14 @@ const CHART_UPDATE_T = 1000
 
 var socket = null
 
-testChart = null
-
 ModeEnum = {
     SOCKET: 0,
     HTTP: 1,
 }
 
-MODE = ModeEnum.SOCKET
+MODE = ModeEnum.HTTP
 
-device_graphs = new Map();
+devices = new Map();
 
 $("body").ready(function() {
     console.log("running");
@@ -24,51 +22,33 @@ $("body").ready(function() {
         });
 
         socket.on("devicePowerUsage", function(data) {
-            updateGraphData(data)
+            for (var i = 0; i < data.devices.length; i ++) {
+                updateGraphData(data.devices[i])
+            }
         });
     }
 
-    getLaundromatData()
+    setInterval(function() {
+        requestDevicePowerUsage()
+    }, CHART_UPDATE_T)
 
     return;
 });
 
-// adds the onclick function to device_list_title class
-function addDeviceListTitleOnClick() {
-    // onclick functions below
-    $(".device_list_title").click(function(e) {
-        var underscore_location = e.target.id.indexOf("_")
-        var device = e.target.id.substring(0, underscore_location);
-        underscore_location = e.target.id.lastIndexOf("_")
-        var id = e.target.id.substring(underscore_location + 1);
-
-        var css_id = "#" + device + "_" + id;
-        console.log("Toggling open on device list: " + css_id);
-
-        $(css_id).toggleClass("open");
-    });
-}
-
-function requestDevicePowerUsage(lmid, device, deviceid) {
-    var data = {
-        "lmid": lmid,
-        "device": device,
-        "deviceid": deviceid
-    }
-
+function requestDevicePowerUsage() {
     // here is where we decide to use HTTP or SOCKET
     if (MODE == ModeEnum.SOCKET) {
-        socket.emit("devicePowerUsageRequest", data)
+        socket.emit("devicePowerUsageRequest")
     }
     else if (MODE == ModeEnum.HTTP) {
         $.ajax({
             method: "GET",
-            url: "/devicePowerUsageRequest",
-            data: data
+            url: "/devicePowerUsageRequest"
         }).done(function(response) {
-            updateGraphData(response)
+            for (var i = 0; i < response.devices.length; i ++) {
+                updateGraphData(response.devices[i])
+            }
         });
-
     }
 }
 
@@ -77,8 +57,22 @@ function updateGraphData(data) {
     var rcd_time = data.recorded_time;
     var difference = rcv_time - rcd_time
 
-    var key = "" + data.lmid + data.device + data.deviceid
-    var graph = device_graphs.get(key)
+    // if the device id is not in devices,
+    // add new HTML for it
+    if (!devices.has(data.id)) {
+        if (devices.size == 0) {
+            $("#laundromats").html("")
+        }
+        $("#laundromats").append(buildDeviceHTML(data.id))
+
+        var graph = getGraph(data.id)
+        graph.lat_avgs = []
+        graph.lat_print_count = 0
+        devices.set(data.id, graph)
+    }
+
+    var graph = devices.get(data.id)
+
     var num = data.power_level
     graph.data.datasets[0].data.shift()
     graph.data.datasets[0].data.push(num)
@@ -102,10 +96,9 @@ function updateGraphData(data) {
         lat_string += " (appears to be disconnected)"
     }
 
-    $("#" + key + "latency").html(lat_string)
-
-    $("#" + key + "state").html("State: " + data.state)
-    $("#" + key + "ect").html("ECT: " + data.ect)
+    $("#" + data.id + "latency").html(lat_string)
+    $("#" + data.id + "state").html("State: " + data.state)
+    $("#" + data.id + "ect").html("ECT: " + data.ect)
 
     // calculate the max value in the data. Add 1 so it is never 0
     var max = Math.max.apply(null, graph.data.datasets[0].data)
@@ -117,72 +110,7 @@ function updateGraphData(data) {
     graph.update()
 }
 
-function getLaundromatData() {
-    console.log("Requesting laundromat data from server")
-    $.ajax({
-        method: "GET",
-        url: "/laundromat",
-        data: { "longitude": 38.78169995906734, "latitude": -90.52582140779946 }
-    }).done(function(response) {
-        console.log("received laundromat data... response:")
-        console.log(response)
-        var html = ""
-        for(var i = 0; i < response.laundromats.length; i ++) {
-            console.log("Building HTML for laundromat " + i);
-            html += buildLaundromatHTML(response.laundromats[i])
-        }
-
-        $("#laundromats").html(html)
-
-        addDeviceListTitleOnClick()
-
-        for(var i = 0; i < response.laundromats.length; i ++) {
-            addGraphs(response.laundromats[i])
-        }
-
-        setInterval(function() {
-            for(const graph of device_graphs.values()) {
-                requestDevicePowerUsage(graph.lmid, graph.device, graph.id)
-            }
-        }, CHART_UPDATE_T)
-    });
-}
-
-// builds all HTML for a single laundromat
-function buildLaundromatHTML(lm_info) {
-    var html = ""
-
-    html += buildDevicesHTML("washer", lm_info.num_washers, lm_info.id)
-    html += buildDevicesHTML("dryer", lm_info.num_dryers, lm_info.id)
-
-    return html
-}
-
-function addGraphs(lm) {
-    for(var i = 0; i < lm.num_dryers; i ++) {
-        var key = "" + lm.id + "dryer" + i
-        var graph = getGraph(lm.id, "dryer", i)
-        graph.lmid = lm.id
-        graph.device = "dryer"
-        graph.id = i
-        graph.lat_avgs = []
-        graph.lat_print_count = 0
-        device_graphs.set(key, graph)
-    }
-
-    for(var i = 0; i < lm.num_washers; i ++) {
-        var key = "" + lm.id + "washer" + i
-        var graph = getGraph(lm.id, "washer", i)
-        graph.lmid = lm.id
-        graph.device = "washer"
-        graph.id = i
-        graph.lat_avgs = []
-        graph.lat_print_count = 0
-        device_graphs.set(key, graph)
-    }
-}
-
-function getGraph(lmid, d_name, d_id) {
+function getGraph(id) {
     const NUM_DATA_POINTS = 30
     const MAX_VAL = 10
 
@@ -234,33 +162,28 @@ function getGraph(lmid, d_name, d_id) {
         }
     };
 
-    var graphname = "#" + lmid + d_name + d_id + "graph"
+    var graphname = "#" + id + "graph"
     const myChart = new Chart(
         $(graphname),
         config
     );
     return myChart
 }
-
 // builds and returns HTML for a list of devices
-function buildDevicesHTML(d_name, num_devices, lmid) {
+function buildDeviceHTML(id) {
     var html = ""
 
-    var DEVICE_HTML = 
+    var DEVICE_HTML =
         "<div class=\"devcontainer\">" +
-            "<div><b>DEVICENAME DEVICEID</b></div>" +
-            "<div id=\"FULLIDstate\">State: ...</div>" +
-            "<div id=\"FULLIDect\">ECT: ...</div>" +
-            "<div id=\"FULLIDlatency\">Latency: ...</div>" +
-            "<div><canvas id='FULLIDgraph'></canvas></div>" +
+            "<div><b>ID</b></div>" +
+            "<div id=\"IDstate\">State: ...</div>" +
+            "<div id=\"IDect\">ECT: ...</div>" +
+            "<div id=\"IDlatency\">Latency: ...</div>" +
+            "<div><canvas id='IDgraph'></canvas></div>" +
         "</div>"
-    DEVICE_HTML = DEVICE_HTML.replaceAll("LMID", lmid)
-    DEVICE_HTML = DEVICE_HTML.replaceAll("DEVICENAME", d_name)
-    for (var i = 0; i < num_devices; i ++) {
-        var fullid = "" + lmid + d_name + i
-        html += DEVICE_HTML.replaceAll("DEVICEID", i)
-                           .replaceAll("FULLID", fullid)
-    }
+    DEVICE_HTML = DEVICE_HTML.replaceAll("ID", id)
+
+    html += DEVICE_HTML
 
     return html
 }
