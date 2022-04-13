@@ -45,3 +45,12 @@ body {
     margin: 30px;
     padding: 10px;
 }
+
+#map {
+  height: 40%;
+  margin: 20px;
+}
+
+#route_planner {
+    color: white;
+}

@@ -1,4 +1,4 @@
-from flask import Flask, request, current_app, render_template, g
+from flask import Flask, jsonify, request, current_app, render_template, g
 from flask_socketio import SocketIO, send, emit
 from flask_caching import Cache
 from engineio.payload import Payload
@@ -9,6 +9,7 @@ from collections import deque
 
 from storage import get_store
 from dotenv import load_dotenv
+from laundromats import LocationFactory
 
 # server config
 app = Flask(__name__)
@@ -20,7 +21,7 @@ app.logger.setLevel(gunicorn_logger.level)
 # socketio config
 Payload.max_decode_packets = 500
 socketio = SocketIO(app)
-cache = Cache(app)
+#cache = Cache(app)
 
 power_levels = {}
 
@@ -44,11 +45,37 @@ def get_device_power_usage():
 
 # routes
 @app.route("/", methods = ["GET"])
-@cache.cached(timeout=50)
+#@cache.cached(timeout=50)
 def index():
     request_origin = request.environ.get("HTTP_ORIGIN", "")
 #    app.logger.info(f"GET - /index.html from {request_origin}")
     return render_template("index.html")
+
+
+@app.route("/locations", methods = ["GET"])
+def get_laundromat_locations():
+    app.logger.info(f"GET - api request to laundromat locations")
+    locations = []
+    for location in LocationFactory.generate_locations():
+        locations.append(location.serialize())
+    return jsonify(laundromats=locations), 200
+
+@app.route("/find_laundromat", methods = ["GET"])
+def recommend_laundromat():
+    user_lat, user_lon = float(request.args.get("lat")), float(request.args.get("lon"))
+    if not user_lat or not user_lon:
+        return {"message": "failure"}, 404
+    locations = list(map(json.loads, get_laundromat_locations()[0].get_json()["laundromats"]))
+
+    # TODO: function to recommend, currently picks closest dist
+    dist = map(lambda x: abs(x["lat"] - user_lat) + abs(x["lon"] - user_lon), locations)
+    min_dist = float("inf")
+    idx = 0
+    for i, val in enumerate(dist):
+        if val < min_dist:
+            idx = i
+            min_dist = val
+    return jsonify(message="success", laundromat=locations[idx]), 200
 
 @app.route("/devicePowerUsageRequest", methods = ["GET"])
 def getHTTPDevPowerUsageRequest():
@@ -62,7 +89,7 @@ def post_data():
     data = request.form
     power_levels[get_pi_id(data.get("ID"))] = (data.get("current"), data.get("time"))
 
-    app.logger.info(f"HTTP - Received: {payload}")
+    #app.logger.info(f"HTTP - Received: sent power_levels")
     response = {"message": "success"}
     return response, 200
 
@@ -87,5 +114,5 @@ def page_not_found(error):
 
 if __name__ == "__main__":
    print("===== Starting the server =======")
-   socketio.run(app, host = "0.0.0.0", port = 8080)
+   socketio.run(app, host="0.0.0.0") # ssl_context="adhoc")
    #app.run(host = "0.0.0.0", port = 8080)

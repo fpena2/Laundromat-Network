@@ -1,4 +1,4 @@
-// constants
+// constant//s
 const CHART_UPDATE_T = 1000
 
 var socket = null
@@ -187,3 +187,100 @@ function buildDeviceHTML(id) {
 
     return html
 }
+
+// add geographical map with laundromant locations to html
+let geo_map;
+let directions_renderer; 
+let directions_service;
+
+function init_map() {
+    /*
+     * renders map
+     */
+    $.ajax({
+        method: "GET",
+        url: "/locations"
+    }).done(function(response) {
+        let map_zoom = 11
+        let min_lat = 10000
+        let max_lon = -10000
+        let markers = []
+        
+        geo_map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat: 38.63500, lng: -90.508 },
+            zoom: map_zoom,
+        });
+        directions_renderer = new google.maps.DirectionsRenderer();
+        directions_service = new google.maps.DirectionsService();
+        directions_renderer.setMap(geo_map);
+
+        console.log("length: ", response.laundromats.length)
+        for (let i = 0; i < response.laundromats.length; i++) {
+            loc = JSON.parse(response.laundromats[i]);
+
+            let laundro_name = `laundromat ${i}`
+            let marker = new google.maps.Marker({
+                position: new google.maps.LatLng(loc.lat, loc.lon), 
+                geo_map,
+                title: laundro_name
+            });
+            marker.setMap(geo_map)
+
+            let infowindow = new google.maps.InfoWindow({
+                content: laundro_name
+            });
+            google.maps.event.addListener(marker, 'click', function() {
+                infowindow.open(map,marker);
+            });
+
+            min_lat = Math.min(min_lat, loc.lat);
+            max_lon = Math.max(max_lon, loc.lon);
+        }
+
+        geo_map.setCenter(new google.maps.LatLng(min_lat + 0.05 , max_lon));
+
+    }); 
+
+}
+
+function _display_route_helper(user_pos) {
+    let travel_mode = document.getElementById('mode').value;
+
+    $.ajax({
+        method: "GET",
+        url: "/find_laundromat",
+        data: {lat: user_pos.coords.latitude, lon: user_pos.coords.longitude}
+    }).done(function (response) {
+        let recommended_laundromat = response.laundromat;
+        let directions_request = {
+            origin: {lat: user_pos.coords.latitude, lng: user_pos.coords.longitude},
+            destination: {lat: recommended_laundromat.lat, lng: recommended_laundromat.lon},
+            travelMode: google.maps.TravelMode[travel_mode]
+        };
+        
+
+        directions_service.route(directions_request, function (response, status_) {
+            if (status_ == "OK") {
+                directions_renderer.setDirections(response);
+            }
+        });
+    });
+}
+
+function _display_route_err_handler(err) {
+    console.log(err);
+}
+
+function display_route() {
+    /*
+     * computes and renders the route from one current user location to laundromat
+     * TODO: receive laundromat recommendation from server
+     */
+    let user_lat = 0; let user_lon = 0;
+    if (!navigator.geolocation) {
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(_display_route_helper, _display_route_err_handler); 
+}
+
