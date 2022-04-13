@@ -45,6 +45,7 @@ registered_devices = {}
 
 pi_data = {}
 
+power_levels = {}
 
 def get_pi_id(name):
     # .e.g. Thread-3 (work)
@@ -137,40 +138,21 @@ def get_data():
 
 @socketio.on("data")
 def handle_message(data):
-    global washer_lr_payload
-    global queue
-    washer_lr_payload["power_level"] = float(data["current"])
-    washer_lr_payload["recorded_time"] = float(data["time"])
-    washer_lr_payload["device"] = "washer"
-
-    npayload = {}
-    npayload["power_level"] = float(data["current"])
-    npayload["recorded_time"] = float(data["time"])
-    npayload["device"] = "washer"
-    queue.append(npayload)
-
-    serialized_data = json.dumps(data)
-    #asyncio.run(mongo.store(data))
-    #asyncio.run(s3.store(data))
-    emit("data", serialized_data)
-    app.logger.info(f"WebSocket - Received: {data} from Raspberry Pi")
+    global power_levels
+    power_levels[get_pi_id(data["ID"])] = (data["current"], data["time"])
 
 @socketio.on("devicePowerUsageRequest")
 def handle_data_request(data):
-    global dryer_lr_payload
-    global washer_lr_payload
+    global power_levels
 
-    if data["device"].lower() == "washer":
-        #data["device"] = washer_lr_payload["device"] 
-        data["power_level"] = washer_lr_payload["power_level"]
-        data["recorded_time"] = washer_lr_payload["recorded_time"]
-        emit("devicePowerUsage", data, broadcast = False)
-    else:
-        #data["device"] = dryer_lr_payload["device"] 
-        data["power_level"] = dryer_lr_payload["power_level"]
-        data["recorded_time"] = dryer_lr_payload["recorded_time"]
-        emit("devicePowerUsage", data, broadcast = False)
-#    app.logger.info(f"Websocket - Received: {data} from client")
+    current = 5
+    time = 5
+    if data["deviceid"] in power_levels.keys():
+        current, time = power_levels[data["deviceid"]]
+
+    data["power_level"] = current
+    data["recorded_time"] = time
+    emit("devicePowerUsage", data, broadcast = False)
 
 @app.errorhandler(500)
 @app.errorhandler(404)
