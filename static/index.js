@@ -1,4 +1,3 @@
-
 // constants
 const CHART_UPDATE_T = 1000
 
@@ -6,52 +5,28 @@ var socket = null
 
 testChart = null
 
+ModeEnum = {
+    SOCKET: 0,
+    HTTP: 1,
+}
+
+MODE = ModeEnum.SOCKET
+
 device_graphs = new Map();
 
 $("body").ready(function() {
     console.log("running");
 
-    socket = io();
-    socket.on('connect', function() {
-        console.log("websocket connected")
-    });
+    if (MODE == ModeEnum.SOCKET) {
+        socket = io();
+        socket.on('connect', function() {
+            console.log("websocket connected")
+        });
 
-    socket.on("devicePowerUsage", function(data) {
-        var rcv_time = Date.now() / 1000
-        var rcd_time = data.recorded_time;
-        var difference = rcv_time - rcd_time
-		
-        var key = "" + data.lmid + data.device + data.deviceid
-        var graph = device_graphs.get(key)
-        var num = data.power_level
-        graph.data.datasets[0].data.shift()
-        graph.data.datasets[0].data.push(num)
-
-		// calculate latency of data point
-		if (graph.lat_avgs.length > 10) {
-			graph.lat_avgs.shift()
-		}
-		graph.lat_avgs.push(difference)
-		var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
-		var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2) 
-
-		var lat_string = data.device + " " + data.deviceid + ". latency: " + avg_lat + " s"
-
-		if (avg_lat > 15) {
-			lat_string += " (appears to be off)"
-		}
-
-		$("#" + data.device + "_" + data.deviceid + "_" + data.lmid).html(lat_string)
-		
-		// calculate the max value in the data. Add 1 so it is never 0
-		var max = Math.max.apply(null, graph.data.datasets[0].data)
-		if (max <= 0) {
-			max = 1
-		}
-		graph.options.scales.y.max = 1.05 * max
-
-        graph.update()
-    });
+        socket.on("devicePowerUsage", function(data) {
+            updateGraphData(data)
+        });
+    }
 
     getLaundromatData()
 
@@ -80,7 +55,66 @@ function requestDevicePowerUsage(lmid, device, deviceid) {
         "device": device,
         "deviceid": deviceid
     }
-    socket.emit("devicePowerUsageRequest", data)
+
+    // here is where we decide to use HTTP or SOCKET
+    if (MODE == ModeEnum.SOCKET) {
+        socket.emit("devicePowerUsageRequest", data)
+    }
+    else if (MODE == ModeEnum.HTTP) {
+        $.ajax({
+            method: "GET",
+            url: "/devicePowerUsageRequest",
+            data: data
+        }).done(function(response) {
+            updateGraphData(response)
+        });
+
+    }
+}
+
+function updateGraphData(data) {
+    var rcv_time = Date.now() / 1000
+    var rcd_time = data.recorded_time;
+    var difference = rcv_time - rcd_time
+
+    var key = "" + data.lmid + data.device + data.deviceid
+    var graph = device_graphs.get(key)
+    var num = data.power_level
+    graph.data.datasets[0].data.shift()
+    graph.data.datasets[0].data.push(num)
+
+    // calculate latency of data point
+    if (graph.lat_avgs.length > 100) {
+        graph.lat_avgs.shift()
+    }
+    graph.lat_avgs.push(difference)
+    var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
+    var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2)
+
+    var lat_string = "Latency: " + avg_lat + " s"
+
+    if (graph.lat_print_count % 300 == 0) {
+        console.log(lat_string)
+    }
+    graph.lat_print_count ++
+
+    if (avg_lat > 15) {
+        lat_string += " (appears to be disconnected)"
+    }
+
+    $("#" + key + "latency").html(lat_string)
+
+    $("#" + key + "state").html("State: " + data.state)
+    $("#" + key + "ect").html("ECT: " + data.ect)
+
+    // calculate the max value in the data. Add 1 so it is never 0
+    var max = Math.max.apply(null, graph.data.datasets[0].data)
+    if (max <= 0) {
+        max = 1
+    }
+    graph.options.scales.y.max = 1.05 * max
+
+    graph.update()
 }
 
 function getLaundromatData() {
@@ -113,19 +147,13 @@ function getLaundromatData() {
         }, CHART_UPDATE_T)
     });
 }
-
 // builds all HTML for a single laundromat
 function buildLaundromatHTML(lm_info) {
     var html = ""
 
-    // Build the lm name html first
-    //    LMID = laundromat id i.e. 1234 or 15000
-    var LM_NAME_HTML = "<div id='lmname_LMID'>LMNAME</div>"
-    html += LM_NAME_HTML.replaceAll("LMID", lm_info.id).replaceAll("LMNAME", lm_info.name)
-
     html += buildDevicesHTML("washer", lm_info.num_washers, lm_info.id)
     html += buildDevicesHTML("dryer", lm_info.num_dryers, lm_info.id)
-    
+
     return html
 }
 
@@ -136,7 +164,8 @@ function addGraphs(lm) {
         graph.lmid = lm.id
         graph.device = "dryer"
         graph.id = i
-		graph.lat_avgs = []
+        graph.lat_avgs = []
+        graph.lat_print_count = 0
         device_graphs.set(key, graph)
     }
 
@@ -146,7 +175,8 @@ function addGraphs(lm) {
         graph.lmid = lm.id
         graph.device = "washer"
         graph.id = i
-		graph.lat_avgs = []
+        graph.lat_avgs = []
+        graph.lat_print_count = 0
         device_graphs.set(key, graph)
     }
 }
@@ -160,7 +190,7 @@ function getGraph(lmid, d_name, d_id) {
         labels[i] = "T-" + (NUM_DATA_POINTS - (i + 2))
     }
 
-    line_color = 'rgb(186, 0, 6)'
+    line_color = 'rgb(0, 200, 20)'
     point_color = line_color
 
     const data = {
@@ -210,26 +240,25 @@ function getGraph(lmid, d_name, d_id) {
     );
     return myChart
 }
-
 // builds and returns HTML for a list of devices
 function buildDevicesHTML(d_name, num_devices, lmid) {
     var html = ""
 
-    var DEVICE_LIST_TITLE_HTML = "<div class='device_list_title' id='DEVICENAME_title_LMID'> DEVICENAMEs </div>"
-    html += DEVICE_LIST_TITLE_HTML.replaceAll("DEVICENAME", d_name).replaceAll("LMID", lmid);
-
-    var DEVICE_LIST_HTML = "<div id='DEVICENAME_LMID' class='device_list'>"
-    html += DEVICE_LIST_HTML.replaceAll("DEVICENAME", d_name).replaceAll("LMID", lmid)
-
-    var DEVICE_STATUS_HTML = "<div id='DEVICENAME_DEVICEID_LMID'> DEVICENAME DEVICEID:</div>"
-    var DEVICE_GRAPH_HTML = "<div class='chart_container'><canvas id='LMIDDEVICENAMEDEVICEIDgraph'></canvas></div>"
-    for(var i = 0; i < num_devices; i ++) {
-        html += DEVICE_STATUS_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)
-        html += DEVICE_GRAPH_HTML.replaceAll("DEVICENAME", d_name).replaceAll("DEVICEID", i).replaceAll("LMID", lmid)
+    var DEVICE_HTML =
+        "<div class=\"devcontainer\">" +
+            "<div><b>DEVICENAME DEVICEID</b></div>" +
+            "<div id=\"FULLIDstate\">State: ...</div>" +
+            "<div id=\"FULLIDect\">ECT: ...</div>" +
+            "<div id=\"FULLIDlatency\">Latency: ...</div>" +
+            "<div><canvas id='FULLIDgraph'></canvas></div>" +
+        "</div>"
+    DEVICE_HTML = DEVICE_HTML.replaceAll("LMID", lmid)
+    DEVICE_HTML = DEVICE_HTML.replaceAll("DEVICENAME", d_name)
+    for (var i = 0; i < num_devices; i ++) {
+        var fullid = "" + lmid + d_name + i
+        html += DEVICE_HTML.replaceAll("DEVICEID", i)
+                           .replaceAll("FULLID", fullid)
     }
-
-    html += "</div>"
 
     return html
 }
-

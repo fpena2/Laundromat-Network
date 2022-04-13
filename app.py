@@ -5,6 +5,8 @@ from engineio.payload import Payload
 
 import copy, logging, json, asyncio, time
 
+from collections import deque
+
 from storage import get_store
 from dotenv import load_dotenv
 
@@ -14,6 +16,8 @@ app.config["SECRET KEY"] = "test"
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
+
+queue = deque()
 
 # socketio config
 Payload.max_decode_packets = 500
@@ -37,12 +41,23 @@ dryer_lr_payload = {
         "recorded_time": time.time() 
     }
 
+registered_devices = {}
+
+pi_data = {}
+
+
+def get_pi_id(name):
+    # .e.g. Thread-3 (work)
+    num = name.split()[0].split("-")[1]
+    return int(num)
+
+
 # routes
 @app.route("/", methods = ["GET"])
 @cache.cached(timeout=50)
 def index():
     request_origin = request.environ.get("HTTP_ORIGIN", "")
-    app.logger.info(f"GET - /index.html from {request_origin}")
+#    app.logger.info(f"GET - /index.html from {request_origin}")
     return render_template("index.html")
 
 @app.route("/laundromat", methods = ["GET"])
@@ -50,8 +65,8 @@ def get_laundromats():
     lm1 = {
         "name": "cleaners",
         "id": 1200,
-        "num_washers": 1,
-        "num_dryers": 1,
+        "num_washers": 5,
+        "num_dryers": 10,
     }
 
     lon, lat = request.args.get("longitude", 0.0), request.args.get("latitude", 0.0)
@@ -60,13 +75,60 @@ def get_laundromats():
     payload = {"laundromats": [lm1], "message": "success"}
     return payload, 200
 
+@app.route("/devicePowerUsageRequest", methods = ["GET"])
+def getHTTPDevPowerUsageRequest():
+#    app.logger.info("HTTP GET from client")
+    global dryer_lr_payload
+    global washer_lr_payload
+    global queue
+    global pi_data
+    global registered_devices
+
+    data = { 
+        "device": request.args.get("device"),
+        "lmid": request.args.get("lmid"),
+        "deviceid": request.args.get("deviceid")
+    }
+
+    client_id = int(data["deviceid"])
+    pi_key = registered_devices.get(client_id, 0)
+    npayload = pi_data.get(pi_key, data)
+    npayload["deviceid"] = data["deviceid"]
+    npayload["lmid"] = data["lmid"]
+
+    if data["device"].lower() == "washer":
+        #data["device"] = washer_lr_payload["device"] 
+        npayload["power_level"] = washer_lr_payload["power_level"]
+        npayload["recorded_time"] = washer_lr_payload["recorded_time"]
+        return npayload, 200
+    else:
+        #data["device"] = dryer_lr_payload["device"] 
+        npayload["power_level"] = dryer_lr_payload["power_level"]
+        npayload["recorded_time"] = dryer_lr_payload["recorded_time"]
+    return npayload, 200
+
 @app.route("/", methods = ["POST"])
 def get_data():
     global dryer_lr_payload
+    global queue
+    global registered_devices
+    global pi_data
+
     payload = request.get_json(cache = False, force = True)
+    pi_id = get_pi_id(payload["ID"])
+    registered_devices[pi_id - 1] = payload["ID"]
+
     dryer_lr_payload["power_level"] = float(payload["current"])
     dryer_lr_payload["recorded_time"] = float(payload["time"])
     dryer_lr_payload["device"] = "dryer"
+    pi_data[payload["ID"]] = dryer_lr_payload
+    
+    npayload = {}
+    npayload["power_level"] = float(payload["current"])
+    npayload["recorded_time"] = float(payload["time"])
+    npayload["device"] = "dryer"
+    queue.append(npayload)
+
     #asyncio.run(mongo.store(payload))
     #s3.store(payload)
     app.logger.info(f"HTTP - Received: {payload}")
@@ -76,9 +138,17 @@ def get_data():
 @socketio.on("data")
 def handle_message(data):
     global washer_lr_payload
+    global queue
     washer_lr_payload["power_level"] = float(data["current"])
     washer_lr_payload["recorded_time"] = float(data["time"])
     washer_lr_payload["device"] = "washer"
+
+    npayload = {}
+    npayload["power_level"] = float(data["current"])
+    npayload["recorded_time"] = float(data["time"])
+    npayload["device"] = "washer"
+    queue.append(npayload)
+
     serialized_data = json.dumps(data)
     #asyncio.run(mongo.store(data))
     #asyncio.run(s3.store(data))
@@ -100,7 +170,7 @@ def handle_data_request(data):
         data["power_level"] = dryer_lr_payload["power_level"]
         data["recorded_time"] = dryer_lr_payload["recorded_time"]
         emit("devicePowerUsage", data, broadcast = False)
-    app.logger.info(f"Websocket - Received: {data} from client")
+#    app.logger.info(f"Websocket - Received: {data} from client")
 
 @app.errorhandler(500)
 @app.errorhandler(404)

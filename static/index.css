@@ -1,12 +1,15 @@
+* {
+    font-family: Verdana, Geneva, sans-serif;
+}
 
-.test {
-    color: red;
+html {
+    height: 100%;
 }
 
 body {
     margin: 0;
     height: 100%;
-    background-color: white;
+    background-color: rgb(21, 25, 31);
     overflow: visible;
     z-index: 0;
     -webkit-backface-visibility: hidden;
@@ -19,28 +22,25 @@ body {
     transform: translateZ(0);
 }
 
-.chart_container {
-    max-width: 1000px;
+.header {
+    font-size: 50px;
+    color: rgb(0, 115, 10);
+    text-align: center;
 }
 
-.device_list_title {
-    font-weight: bold;
+.lmcontainer {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex-flow: space-around;
 }
 
-.device_on {
-    color: red;
-}
+.devcontainer {
+    background-color: rgb(46, 57, 74);
+    color: rgb(0, 170, 35);
 
-.device_off {
-    color: green;
+    width: 250px;
+    border-radius: 10px;
+    margin: 30px;
+    padding: 10px;
 }
-
-.device_list {
-    max-height: 0px;
-    overflow: hidden;
-}
-
-.device_list.open {
-    max-height: 3000000px;
-}
-
