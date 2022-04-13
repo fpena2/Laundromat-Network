@@ -33,7 +33,7 @@ def work():
     print("Name: {}".format(name))
 
     # Setup Object
-    url = "ec2-3-133-105-193.us-east-2.compute.amazonaws.com"
+    url = "ec2-18-188-215-233.us-east-2.compute.amazonaws.com/data"
     if opts.type == 1:
         cObj = HTTPIO(url)
     else:
@@ -46,7 +46,7 @@ def work():
         # Send data
         utime = str(int(time.time()))
         current = str(template[start][1])
-        # cObj.send(utime, current, name)
+        cObj.send(utime, current, name)
         time.sleep(2)
 
         # Increment
