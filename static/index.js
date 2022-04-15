@@ -105,7 +105,9 @@ function updateGraphData(data) {
     if (max <= 0) {
         max = 1
     }
-    graph.options.scales.y.max = 1.05 * max
+    DEFAULT_MAX = 6
+    newgraphmax = DEFAULT_MAX > max ? DEFAULT_MAX : max
+    graph.options.scales.y.max = newgraphmax * 1.05
 
     graph.update()
 }
@@ -130,7 +132,8 @@ function getGraph(id) {
             borderColor: line_color,
             data: new Array(NUM_DATA_POINTS).fill(0),
             cubicInterpolationMode: 'monotone',
-            tension: 1.0
+            tension: 1.0,
+            pointRadius: 0,
         }]
     };
 

@@ -10,6 +10,7 @@ from collections import deque
 from storage import get_store
 from dotenv import load_dotenv
 from laundromats import LocationFactory
+from detector import det_manager
 
 # server config
 app = Flask(__name__)
@@ -33,11 +34,12 @@ def get_pi_id(name):
 def get_device_power_usage():
     data = {}
     data["devices"] = []
-    for (id, (current, time)) in power_levels.items():
+    for (device_id, (current, time)) in power_levels.items():
         device = {}
-        device["id"] = id
+        device["id"] = device_id
         device["power_level"] = current
         device["recorded_time"] = time
+        device["status"] = det_manager.step(device_id)
 
         data["devices"].append(device)
 
@@ -87,7 +89,10 @@ def getHTTPDevPowerUsageRequest():
 def post_data():
     global power_levels
     data = request.form
-    power_levels[get_pi_id(data.get("ID"))] = (data.get("current"), data.get("time"))
+    device_id = data.get("ID")
+    power_levels[device_id] = (data.get("current"), data.get("time"))
+    if det_manager.is_new_device(device_id):
+        det_manager.add_detector(device_id)
 
     #app.logger.info(f"HTTP - Received: sent power_levels")
     response = {"message": "success"}
@@ -96,7 +101,10 @@ def post_data():
 @socketio.on("data")
 def handle_message(data):
     global power_levels
-    power_levels[get_pi_id(data["ID"])] = (data["current"], data["time"])
+    device_id = data.get("ID")
+    power_levels[device_id] = (data["current"], data["time"])
+    if det_manager.is_new_device(device_id):
+        det_manager.add_detector(device_id)
 
 @socketio.on("devicePowerUsageRequest")
 def handle_data_request():

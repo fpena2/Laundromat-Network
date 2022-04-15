@@ -54,3 +54,9 @@ body {
 #route_planner {
     color: white;
 }
+
+.header-recs {
+    width: 100%;
+    color: white;
+    text-align: center;
+}
