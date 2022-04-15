@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import deque
 
-import sdt.changepoint
+#import sdt.changepoint
 import numpy as np
 
 class BaseDetector:
@@ -50,10 +50,15 @@ class ThresholdDetector(BaseDetector):
         self._sum = 0.0
         self._sumsq = 0.0
         self._is_reset = False
+        self._changepoints = [] # changepoints time stamps
+        self._ts = 0
+        self._next_check = 0
 
     def step(self, data_pt):
         super().step(data_pt)
+        self._next_check -= 1
         self._N += 1
+        self._ts += 1
         self._sum += data_pt
         self._sumsq += data_pt**2
         estimated_time_till_next = 0.0
@@ -67,9 +72,21 @@ class ThresholdDetector(BaseDetector):
 
             ratio = np.exp(window_mu) / np.exp(self._mu)
             if (ratio > 1.0 + self._threshold) or (ratio < 1.0 - self._threshold):
+                self._changepoints.append(self._ts)
                 self.reset()
                 return True, estimated_time_till_next, confidence
         return False, estimated_time_till_next, confidence
+
+    def changed_in_window(self):
+        if len(self._changepoints) == 0:
+            return False
+
+        last_changepoint = self._changepoints[-1]
+        if (self._next_check <= 0) and (abs(self._ts - last_changepoint) <= self._window_size):
+            self._next_check = abs(self._ts - last_changepoint)
+            return True
+        return False
+        
 
     def reset(self):
         self._mu = 0.0
@@ -80,24 +97,27 @@ class ThresholdDetector(BaseDetector):
 
 
 
-class OnlineBayesDetector(BaseDetector):
-    def __init__(self, threshold, min_samples, smoother=None, window=[], window_size=128):
-        super().__init__(threshold, smoother=smoother, window=window, window_size=window_size, min_samples=min_samples)
-        self._detector = sdt.changepoint.BayesOnline()
-
-    def step(self, data_pt):
-        super().step(data_pt)
-        self._N += 1
-        estimated_time_till_next = 0.0
-        confidence = 0.0
-
-        if self._N > self._min_samples:
-            self._detector.update(data_pt)
-            prob = self._detector.get_probabilities(self._window_size)
-
-            if len(prob) > 1 and np.any(prob[1:] > 0.8):
-                return True, estimated_time_till_next, np.max(prob[1:])
-        return False, estimated_time_till_next, confidence
+#class OnlineBayesDetector(BaseDetector):
+#    def __init__(self, threshold, min_samples, smoother=None, window=[], window_size=128):
+#        super().__init__(threshold, smoother=smoother, window=window, window_size=window_size, min_samples=min_samples)
+#        self._detector = sdt.changepoint.BayesOnline()
+#
+#    def step(self, data_pt):
+#        super().step(data_pt)
+#        self._N += 1
+#        estimated_time_till_next = 0.0
+#        confidence = 0.0
+#
+#        if self._N > self._min_samples:
+#            self._detector.update(data_pt)
+#            prob = self._detector.get_probabilities(self._window_size)
+#
+#            if len(prob) > 1 and np.any(prob[1:] > 0.8):
+#                return True, estimated_time_till_next, np.max(prob[1:])
+#        return False, estimated_time_till_next, confidence
+#
+#    def changed_in_window(self):
+#        pass
         
 
 class DetectorManager:
@@ -109,8 +129,8 @@ class DetectorManager:
         if det_type.lower().strip() not in ("threshold", "bayes"):
             raise ValueError("invalid detector type")
         self._det = ThresholdDetector
-        if det_type.lower() == "bayes":
-            self._det = OnlineBayesDetector
+ #       if det_type.lower() == "bayes":
+ #           self._det = OnlineBayesDetector
 
     def is_new_device(self, key):
         return (key not in self._detector_map)
@@ -130,6 +150,9 @@ class DetectorManager:
             return
         del self._detector_map[key]
 
+    def changed_in_window(self, key):
+        return self._detector_map[key].changed_in_window()
+
 det_manager = DetectorManager(0.1, 100)
 
 if __name__ == "__main__":
@@ -137,8 +160,8 @@ if __name__ == "__main__":
     min_samples = 45
     grad_det = ThresholdDetector(threshold, min_samples)
     assert grad_det.threshold == threshold, "wrong threshold in ThresholdDetector"
-    bayes_det = OnlineBayesDetector(threshold, min_samples)
-    assert bayes_det.min_samples == min_samples, "wrong min_samples in BayesDetector"
+#    bayes_det = OnlineBayesDetector(threshold, min_samples)
+#    assert bayes_det.min_samples == min_samples, "wrong min_samples in BayesDetector"
     det_manager = DetectorManager(threshold, min_samples)
     det_manager.add_detector("Thread-1")
     det_manager.add_detector("Thread-2")
@@ -151,9 +174,11 @@ if __name__ == "__main__":
         if i > 105:
             x = np.random.normal(loc=4.5, scale=0.01)
         changed, eta, confidence = det_manager.step("Thread-1", x)
-        if changed:
+        changed_in_window = det_manager.changed_in_window("Thread-1")
+        if changed and changed_in_window:
             print("changepoint at", i)
         #b_changed, b_eta, b_confidence = bayes_det.step(x)
         #print("grad_detector=", changed, eta, confidence, x)
         #print("bayes_detector=", b_changed, b_eta, b_confidence, x)
     det_manager.remove_detector("Thread-2")
+    assert det_manager.is_new_device("Thread-2") == True, "wrong remove_detector"

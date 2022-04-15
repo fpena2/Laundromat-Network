@@ -1,14 +1,9 @@
 from flask import Flask, jsonify, request, current_app, render_template, g
 from flask_socketio import SocketIO, send, emit
-from flask_caching import Cache
 from engineio.payload import Payload
 
-import copy, logging, json, asyncio, time
+import logging, json, asyncio
 
-from collections import deque
-
-from storage import get_store
-from dotenv import load_dotenv
 from laundromats import LocationFactory
 from detector import det_manager
 
@@ -22,7 +17,6 @@ app.logger.setLevel(gunicorn_logger.level)
 # socketio config
 Payload.max_decode_packets = 500
 socketio = SocketIO(app)
-#cache = Cache(app)
 
 power_levels = {}
 
@@ -34,12 +28,12 @@ def get_pi_id(name):
 def get_device_power_usage():
     data = {}
     data["devices"] = []
-    for (device_id, (current, time)) in power_levels.items():
+    for (device_id, (current, time, status)) in power_levels.items():
         device = {}
         device["id"] = device_id
         device["power_level"] = current
         device["recorded_time"] = time
-        device["status"] = det_manager.step(device_id)
+        device["status"] = (status + 1) if det_manager.changed_in_window(device_id) else status
 
         data["devices"].append(device)
 
@@ -47,7 +41,6 @@ def get_device_power_usage():
 
 # routes
 @app.route("/", methods = ["GET"])
-#@cache.cached(timeout=50)
 def index():
     request_origin = request.environ.get("HTTP_ORIGIN", "")
 #    app.logger.info(f"GET - /index.html from {request_origin}")
@@ -90,7 +83,7 @@ def post_data():
     global power_levels
     data = request.form
     device_id = data.get("ID")
-    power_levels[device_id] = (data.get("current"), data.get("time"))
+    power_levels[device_id] = (data.get("current"), data.get("time"), 0)
     if det_manager.is_new_device(device_id):
         det_manager.add_detector(device_id)
 
@@ -102,7 +95,7 @@ def post_data():
 def handle_message(data):
     global power_levels
     device_id = data.get("ID")
-    power_levels[device_id] = (data["current"], data["time"])
+    power_levels[device_id] = (data["current"], data["time"], 0)
     if det_manager.is_new_device(device_id):
         det_manager.add_detector(device_id)
 
