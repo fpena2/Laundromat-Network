@@ -12,8 +12,22 @@ MODE = ModeEnum.HTTP
 
 devices = new Map();
 
+current_lm_id = ""
+
 $("body").ready(function() {
     console.log("running");
+
+    $(".lm_name").click(function(a) {
+        $("#lm_selection_container").addClass("out")
+        $("#device_list_container").removeClass("out")
+        $("#lm_title").html(a.target.id)
+        current_lm_id = a.target.id
+    });
+
+    $("#return_button").click(function() {
+        $("#lm_selection_container").removeClass("out")
+        $("#device_list_container").addClass("out")
+    });
 
     if (MODE == ModeEnum.SOCKET) {
         socket = io();
@@ -27,6 +41,19 @@ $("body").ready(function() {
             }
         });
     }
+
+    $.ajax({
+        method: "GET",
+        url: "/laundromatlist",
+    }).done(function(response) {
+        console.log("Received laundromat list from server")
+        console.log(response)
+        var html = "<div id=\"lm_1\" class=\"lm_name button\">lm_1</div>"
+        // TODO lmids could contain spaces... be sure to support that!
+
+    });
+
+    requestDevicePowerUsage()
 
     setInterval(function() {
         requestDevicePowerUsage()

@@ -20,10 +20,14 @@ socketio = SocketIO(app)
 
 power_levels = {}
 
-def get_pi_id(name):
-    # .e.g. Thread-3 (work)
-    num = name.split()[0].split("-")[1]
-    return int(num)
+def convert_to_str(status):
+    if status == 0:
+        return "washing"
+    elif status == 1:
+        return "rinsing"
+    elif status == 2:
+        return "spinning"
+    return "unknown"
 
 def get_device_power_usage():
     data = {}
@@ -33,7 +37,11 @@ def get_device_power_usage():
         device["id"] = device_id
         device["power_level"] = current
         device["recorded_time"] = time
-        device["status"] = (status + 1) if det_manager.changed_in_window(device_id) else status
+        if det_manager.changed_in_window(device_id):
+            device["state"] = convert_to_str((status + 1)%3) 
+            power_levels[device_id] = (current, time, (status + 1)%3)
+        else:
+            device["state"] = convert_to_str(status)
 
         data["devices"].append(device)
 
@@ -71,6 +79,12 @@ def recommend_laundromat():
             idx = i
             min_dist = val
     return jsonify(message="success", laundromat=locations[idx]), 200
+
+@app.route("/laundromatlist", methods = ["GET"])
+def get_laundromatlist():
+    data = {}
+    data["laundromats"] = ["lm_1", "lm2", "laundro 3", "4"]
+    return data, 200
 
 @app.route("/devicePowerUsageRequest", methods = ["GET"])
 def getHTTPDevPowerUsageRequest():

@@ -15,10 +15,27 @@
 
     <div class="header">Laundromat Network System</div>
 
-    <div id="laundromats" class="lmcontainer">
-        waiting for devices to begin transmitting data...
+    <div id="lm_selection_container" class="lm_selection_container">
+        <b>Select a laundromat:</b>
+        <div id="lm_list" class="lm_list">
+            Loading laundromat list from server...
+            <div id="lm_1" class="lm_name button">lm_1</div>
+            <div id="lm_2" class="lm_name button">lm_2</div>
+            <div id="lm_3" class="lm_name button">lm_3</div>
+            <div id="lm_4" class="lm_name button">lm_4</div>
+        </div>
     </div>
+
+    <div id="device_list_container" class="device_list_container out">
+        <div id="return_button" class="button">Return to laundromat selection</div>
+        <div id="lm_title" class="lm_title"></div>
+        <div id="laundromats" class="lmcontainer">
+            waiting for devices to begin transmitting data...
+        </div>
+    </div>
+
     <br/>    
+    <!--
     <div>
         <div class="header-recs">
             <strong id="router_planner">Mode of Travel: </strong>
@@ -32,9 +49,10 @@
     </div>
     <div id="map"></div>
 
-    <!-- Async script executes immediately and must be after any DOM elements used in callback. -->
+    <!-- Async script executes immediately and must be after any DOM elements used in callback. ->
     <script
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBsHRTXaHxhpx0ZDGHiczX7XMfHHYO-x2w&callback=init_map&v=weekly" async defer 
     ></script>
+    -->
 </body>
 
