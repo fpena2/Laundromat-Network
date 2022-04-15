@@ -86,6 +86,7 @@ def post_data():
     power_levels[device_id] = (data.get("current"), data.get("time"), 0)
     if det_manager.is_new_device(device_id):
         det_manager.add_detector(device_id)
+    det_manager.step(device_id, float(data["current"]))
 
     #app.logger.info(f"HTTP - Received: sent power_levels")
     response = {"message": "success"}
@@ -98,6 +99,7 @@ def handle_message(data):
     power_levels[device_id] = (data["current"], data["time"], 0)
     if det_manager.is_new_device(device_id):
         det_manager.add_detector(device_id)
+    det_manager.step(device_id, float(data["current"]))
 
 @socketio.on("devicePowerUsageRequest")
 def handle_data_request():
