@@ -8,6 +8,9 @@ sys.path.append(os.path.abspath("./libs/"))
 from Measure import Measure
 from COM import SocketIO
 
+# Params
+OWNER = "Super Laundry"
+
 # Testing Params
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', dest='__debug__', default=False, action='store_true')
@@ -45,7 +48,7 @@ try:
 
             # Push to server
             if not args.__offline__:
-                cObj.send(unixTime, current, devID)
+                cObj.send(unixTime, current, devID, OWNER)
 
             # Print to console
             print(msg)

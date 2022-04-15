@@ -19,13 +19,15 @@ class SocketIO(threading.local):
         self.setup()
         self.connect_loop()
 
-    def send(self, time_unix, current_amps, id):
+    def send(self, time_unix, current_amps, id, owner):
         try:
-            self.sio.emit('data', {
-                'time': time_unix,
-                'current': current_amps,
-                'ID': id
-            })
+            self.sio.emit(
+                'data', {
+                    'time': time_unix,
+                    'current': current_amps,
+                    'ID': id,
+                    'owner': owner
+                })
         except Exception as e:
             print("--EXCEPTION: ", e)
 
@@ -60,7 +62,12 @@ class HTTPIO(threading.local):
     def __init__(self, url) -> None:
         self.url = f"http://{url}"
 
-    def send(self, time_unix, current_amps, id):
-        msg = {'time': time_unix, 'current': current_amps, 'ID': id}
+    def send(self, time_unix, current_amps, id, owner):
+        msg = {
+            'time': time_unix,
+            'current': current_amps,
+            'ID': id,
+            'owner': owner
+        }
         response = requests.post(self.url, msg)
         print("Got: ", response, " With: ", json.dumps(msg))

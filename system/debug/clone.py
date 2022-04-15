@@ -5,12 +5,16 @@ import numpy as np
 from pathlib import Path
 import argparse
 import threading
+import random
 # Add libs path
 main_dir = Path(__file__).parents[1]
 if (libsPath := main_dir.joinpath("libs/")):
     print("Adding libs")
     sys.path.append(str(libsPath))
     from COM import SocketIO, HTTPIO
+
+# Choose a random owner name (testing)
+OWNERS = ["Super Laundry", "Mega Laundry", "Cheap Fast Laundry"]
 
 # Testing Params
 parser = argparse.ArgumentParser()
@@ -30,6 +34,7 @@ with open('template.csv', newline='') as f:
 # Threads section
 def work():
     name = threading.current_thread().name
+    owner = random.choice(OWNERS)
     print("Name: {}".format(name))
 
     # Setup Object
@@ -48,7 +53,7 @@ def work():
         # Send data
         utime = str(int(time.time()))
         current = str(template[start][1])
-        cObj.send(utime, current, name)
+        cObj.send(utime, current, name, owner)
         time.sleep(2)
 
         # Increment
