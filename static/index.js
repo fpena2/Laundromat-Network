@@ -8,26 +8,15 @@ ModeEnum = {
     HTTP: 1,
 }
 
-MODE = ModeEnum.HTTP
+MODE = ModeEnum.SOCKET
 
 devices = new Map();
-
 current_lm_id = ""
+reqInterval = null
+clickable = true
 
 $("body").ready(function() {
     console.log("running");
-
-    $(".lm_name").click(function(a) {
-        $("#lm_selection_container").addClass("out")
-        $("#device_list_container").removeClass("out")
-        $("#lm_title").html(a.target.id)
-        current_lm_id = a.target.id
-    });
-
-    $("#return_button").click(function() {
-        $("#lm_selection_container").removeClass("out")
-        $("#device_list_container").addClass("out")
-    });
 
     if (MODE == ModeEnum.SOCKET) {
         socket = io();
@@ -46,31 +35,71 @@ $("body").ready(function() {
         method: "GET",
         url: "/laundromatlist",
     }).done(function(response) {
-        console.log("Received laundromat list from server")
-        console.log(response)
-        var html = "<div id=\"lm_1\" class=\"lm_name button\">lm_1</div>"
-        // TODO lmids could contain spaces... be sure to support that!
+        var template = "<div id=\"lm_HTMLID\" class=\"lm_name button\">ID</div>"
+        var lms = response.laundromats
+        if (lms.length == 0) {
+            $("#lm_list").html("Error: No laundromats connected to server..." +
+                "Try refreshing when some are");
+        } else {
+            var html = "";
+            for (var i = 0; i < lms.length; i ++) {
+                htmlid = lms[i].replaceAll(" ", "_")
+                html += template.replaceAll("HTMLID", htmlid).replaceAll("ID", lms[i])
+            }
+            $("#lm_list").html(html)
+        }
+
+        // apparently it is important to do this after building the html
+        $(".lm_name").click(function(a) {
+            if (!clickable) {
+                return
+            }
+
+            $("#lm_selection_container").addClass("out")
+            $("#device_list_container").removeClass("out")
+            var lm_name = $("#" + a.target.id).html()
+            $("#lm_title").html(lm_name)
+            current_lm_id = lm_name
+
+            requestDevicePowerUsage()
+            reqInterval = setInterval(function() {
+                requestDevicePowerUsage()
+            }, CHART_UPDATE_T)
+        });
+
+        $("#return_button").click(function() {
+            $("#lm_selection_container").removeClass("out")
+            $("#device_list_container").addClass("out")
+            clickable = false
+            setTimeout(function() {
+                $("#devices").html("Waiting for devices to begin transmitting data...")
+                devices.clear()
+                current_lm_id = ""
+                clickable = true
+            }, 1000)
+            clearInterval(reqInterval)
+        });
 
     });
-
-    requestDevicePowerUsage()
-
-    setInterval(function() {
-        requestDevicePowerUsage()
-    }, CHART_UPDATE_T)
 
     return;
 });
 
 function requestDevicePowerUsage() {
-    // here is where we decide to use HTTP or SOCKET
+    if (current_lm_id == "") {
+        return
+    }
+    data = {
+        "laundromatid": current_lm_id
+    }
     if (MODE == ModeEnum.SOCKET) {
-        socket.emit("devicePowerUsageRequest")
+        socket.emit("devicePowerUsageRequest", data)
     }
     else if (MODE == ModeEnum.HTTP) {
         $.ajax({
             method: "GET",
-            url: "/devicePowerUsageRequest"
+            url: "/devicePowerUsageRequest",
+            data: data
         }).done(function(response) {
             for (var i = 0; i < response.devices.length; i ++) {
                 updateGraphData(response.devices[i])
@@ -88,9 +117,9 @@ function updateGraphData(data) {
     // add new HTML for it
     if (!devices.has(data.id)) {
         if (devices.size == 0) {
-            $("#laundromats").html("")
+            $("#devices").html("")
         }
-        $("#laundromats").append(buildDeviceHTML(data.id))
+        $("#devices").append(buildDeviceHTML(data.id))
 
         var graph = getGraph(data.id)
         graph.lat_avgs = []
@@ -112,10 +141,10 @@ function updateGraphData(data) {
     var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
     var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2)
 
-    var lat_string = "Latency: " + avg_lat + " s"
+    var lat_string = "latency: " + avg_lat + " s"
 
     if (graph.lat_print_count % 300 == 0) {
-        console.log(lat_string)
+        console.log(data.id + " " + lat_string)
     }
     graph.lat_print_count ++
 

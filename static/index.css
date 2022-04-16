@@ -100,6 +100,14 @@ body {
     transform: translate3d(-100%, 0, 0);
 }
 
+.devices_container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    width: 100%;
+}
+
 .devcontainer {
     background-color: rgb(46, 57, 74);
 

@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, current_app, render_template, g
 from flask_socketio import SocketIO, send, emit
 from engineio.payload import Payload
 
-import logging, json, asyncio
+import logging, json, asyncio, time
 
 from laundromats import LocationFactory
 from detector import det_manager
@@ -18,7 +18,14 @@ app.logger.setLevel(gunicorn_logger.level)
 Payload.max_decode_packets = 500
 socketio = SocketIO(app)
 
-power_levels = {}
+class DeviceInfo:
+    id = ""
+    current = 0.0
+    time = 0.0
+    owner = ""
+    status = 0
+
+laundromat_info = {}
 
 def convert_to_str(status):
     if status == 0:
@@ -29,19 +36,42 @@ def convert_to_str(status):
         return "spinning"
     return "unknown"
 
-def get_device_power_usage():
+def record_data(data):
+    global laundromat_info
+    
+    dev = DeviceInfo()
+    dev.id = data.get("ID")
+    dev.current = data.get("current")
+    dev.time = data.get("time")
+    dev.owner = data.get("owner")
+    dev.status = 0
+
+    if not dev.owner in laundromat_info:
+        laundromat_info[dev.owner] = {}
+
+    laundromat_info[dev.owner][dev.id] = dev
+
+    if det_manager.is_new_device(dev.id):
+        det_manager.add_detector(dev.id)
+    det_manager.step(dev.id, float(dev.current))
+
+def get_device_power_usage(laundromatid):
+    global laundromat_info
+
     data = {}
     data["devices"] = []
-    for (device_id, (current, time, status)) in power_levels.items():
+    devices = laundromat_info[laundromatid].values()
+    for dev in devices:
         device = {}
-        device["id"] = device_id
-        device["power_level"] = current
-        device["recorded_time"] = time
-        if det_manager.changed_in_window(device_id):
-            device["state"] = convert_to_str((status + 1)%3) 
-            power_levels[device_id] = (current, time, (status + 1)%3)
+        device["id"] = dev.id
+        device["power_level"] = dev.current
+        device["recorded_time"] = dev.time
+        if det_manager.changed_in_window(dev.id):
+            device["state"] = convert_to_str((dev.status + 1)%3) 
+            dev.status = device["state"]
+            laundromat_info[laundromatid][dev.id] = dev
         else:
-            device["state"] = convert_to_str(status)
+            device["state"] = convert_to_str(dev.status)
 
         data["devices"].append(device)
 
@@ -82,25 +112,34 @@ def recommend_laundromat():
 
 @app.route("/laundromatlist", methods = ["GET"])
 def get_laundromatlist():
+    # prune laundromats that have no active devices
+    print(laundromat_info.keys())
+    for (lmid, devices) in list(laundromat_info.items()):
+        for (devid, dev) in list(devices.items()):
+            current_time = time.time()
+            if current_time - float(dev.time) > 60:
+                del devices[devid]
+        if len(devices) == 0:
+            del laundromat_info[lmid]
+
+    print(laundromat_info.keys())
+
     data = {}
-    data["laundromats"] = ["lm_1", "lm2", "laundro 3", "4"]
+    data["laundromats"] = list(laundromat_info.keys())
+    print(data)
     return data, 200
 
 @app.route("/devicePowerUsageRequest", methods = ["GET"])
 def getHTTPDevPowerUsageRequest():
 #    app.logger.info("HTTP GET from client")
-    data = get_device_power_usage()
+    laundromatid = request.args.get("laundromatid")
+    data = get_device_power_usage(laundromatid)
     return data, 200
 
 @app.route("/data", methods = ["POST"])
 def post_data():
-    global power_levels
     data = request.form
-    device_id = data.get("ID")
-    power_levels[device_id] = (data.get("current"), data.get("time"), 0)
-    if det_manager.is_new_device(device_id):
-        det_manager.add_detector(device_id)
-    det_manager.step(device_id, float(data["current"]))
+    record_data(data)
 
     #app.logger.info(f"HTTP - Received: sent power_levels")
     response = {"message": "success"}
@@ -108,18 +147,11 @@ def post_data():
 
 @socketio.on("data")
 def handle_message(data):
-    global power_levels
-    device_id = data.get("ID")
-    power_levels[device_id] = (data["current"], data["time"], 0)
-    if det_manager.is_new_device(device_id):
-        det_manager.add_detector(device_id)
-    det_manager.step(device_id, float(data["current"]))
+    record_data(data)
 
 @socketio.on("devicePowerUsageRequest")
-def handle_data_request():
-    global power_levels
-
-    data = get_device_power_usage()
+def handle_data_request(data):
+    data = get_device_power_usage(data["laundromatid"])
     emit("devicePowerUsage", data, broadcast = False)
 
 @app.errorhandler(500)
