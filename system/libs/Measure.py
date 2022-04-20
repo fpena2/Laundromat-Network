@@ -7,6 +7,7 @@ from adafruit_ads1x15.analog_in import AnalogIn
 
 
 class Measure():
+
     def __init__(self) -> None:
         self.FACTOR = 10  # 100A => 10mA => 10V
         self.ERROR = 1.11
@@ -23,11 +24,10 @@ class Measure():
     def get(self, *, interval_ms):
         peak_voltage = 0
         t = self.milli()
-        while(self.milli() - t < interval_ms):
+        while (self.milli() - t < interval_ms):
             voltage = self.chan.voltage
             if voltage > peak_voltage:
                 peak_voltage = voltage
 
         # Coverts voltage to current
         return peak_voltage * self.FACTOR * self.ERROR
-

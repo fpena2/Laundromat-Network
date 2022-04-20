@@ -8,7 +8,7 @@ import time
 class SocketIO(threading.local):
 
     def __init__(self, url) -> None:
-        self.sio = socketio.Client(logger=True, engineio_logger=True)
+        self.sio = socketio.Client(logger=True, engineio_logger=False)
         self.url = f"http://{url}"
         self.isConnected = False
 
