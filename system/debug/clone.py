@@ -29,19 +29,13 @@ with open('template.csv', newline='') as f:
     template = list(reader)
     template_size = len(template)
 
-# Lock for the threads
-mutex = Lock()
-
 
 # Threads section
-def work():
-    mutex.acquire()
-    name = threading.current_thread().name
-    # Clean up the name
-    name = ''.join([i for i in name if i.isalnum()])
+def work(name):
     # Determine "owner"
     index = int(int(name.strip(string.ascii_letters)) / 10)
     owner = f"Laundromat_{index}"
+
     # Setup Object
     url = "ec2-18-188-215-233.us-east-2.compute.amazonaws.com/data"
     if opts.type == 1:
@@ -65,13 +59,12 @@ def work():
             start = 0
         # Debug
         print(f"--name: {name}, i:{start}, data:{template[start][1]}")
-    mutex.release()
 
 
 # Entry
 def main():
     for worker in range(0, opts.pool):
-        Thread(target=work).start()
+        Thread(target=work, args=(str(worker), )).start()
 
 
 main()
