@@ -8,9 +8,11 @@ import time
 class SocketIO(threading.local):
 
     def __init__(self, url) -> None:
-        self.sio = socketio.Client(logger=True, engineio_logger=False)
+        self.sio = socketio.Client(logger=False, engineio_logger=False)
         self.url = f"http://{url}"
         self.isConnected = False
+        # Tracks if this clone's connection dropped at any point
+        self.status = 0
 
     def setup(self):
         self.call_backs()
@@ -30,6 +32,8 @@ class SocketIO(threading.local):
                 })
         except Exception as e:
             print("--EXCEPTION: ", e)
+            self.status = 1
+        return self.status
 
     def kill(self):
         self.sio.disconnect()
@@ -39,10 +43,9 @@ class SocketIO(threading.local):
             try:
                 self.sio.connect(self.url)
             except Exception as e:
-                print("--EXCEPTION:", e)
+                print("--EXCEPTION: {e} (re-trying...)")
             else:
                 self.isConnected = True
-            print("--DEBUG: attempting to reconnect...")
             time.sleep(5)
 
     def call_backs(self):
@@ -70,4 +73,8 @@ class HTTPIO(threading.local):
             'owner': owner
         }
         response = requests.post(self.url, msg)
-        print("Got: ", response, " With: ", json.dumps(msg))
+        res = 0
+        if response.status_code != 200:
+            res = 1
+        print(f"Thread: {id} -> {response.status_code}")
+        return res

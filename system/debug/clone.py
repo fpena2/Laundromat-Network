@@ -50,19 +50,33 @@ def work(name):
         # Send data
         utime = str(int(time.time()))
         current = str(template[start][1])
-        cObj.send(utime, current, name, owner)
-        time.sleep(2)
+        res = cObj.send(utime, current, name, owner)
+        # Update tracker
+        if res > 0:
+            print(f"Thread: {name} -> Disconnected")
+            track.update({name: res})
         # Increment
+        time.sleep(2)
         start += 1
         # Re-start
         if start >= template_size:
             start = 0
         # Debug
-        print(f"--name: {name}, i:{start}, data:{template[start][1]}")
+        # Log if more than 5% have disconnected
+        if len(track.keys()) > 0.05 * opts.pool:
+            f = open("res.log", "w")
+            print(
+                f"Type: {opts.type}, Pool: {opts.pool}, Len: {len(track.keys())}",
+                file=f)
+
+
+# Tracks connection status
+track = {}
 
 
 # Entry
 def main():
+    print("Starting workers")
     for worker in range(0, opts.pool):
         Thread(target=work, args=(str(worker), )).start()
 
