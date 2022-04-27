@@ -20,9 +20,9 @@ def train_model(data_path, model, param_grid, label_str, out_path = "./models", 
         raise ValueError(f"{label_str} is not a column in the dataset")
 
     y = df[label_str]
-    y += 0.001
     X = df.drop(["ect", "status"], axis=1)
     if label_str.lower() == "ect":
+        y += 1e-4
         X = X.drop("epoch_time", axis=1)
 
     X["avg_curr_diff"] = X["current"] - X["current"].mean()
@@ -57,12 +57,14 @@ if __name__ == "__main__":
     out_path = os.path.join("models", "gamma_regressor.pkl")
     data_path = os.path.join("data", "hand_labeled_data.csv")
     label_str = "ect"
-    param_grid = {"estimator__alpha": [0.1, 0.2, 0.5, 0.7, 0.8, 0.9]}
-    scoring = "neg_mean_gamma_deviance"
+    scoring = "neg_mean_gamma_deviance" 
     stratify = False
+    #param_grid = {"multi_class": ["one_vs_rest", "one_vs_one"]}
+    #model = GaussianProcessClassifier()
     model = GammaRegressor()
     standard_scaler = StandardScaler()
     pipe = Pipeline(steps=[("scaler", standard_scaler), ("estimator", model)])
+    param_grid = {"estimator__alpha": [0.1, 0.2, 0.5, 0.7, 0.8, 0.9]}
     
     pipe, params, score = train_model(data_path, pipe, param_grid, label_str, out_path=out_path, train_size=0.8, cv=5, scoring=scoring, stratify=stratify)
     print("======= Train Stats =======")

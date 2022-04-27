@@ -171,7 +171,12 @@ function updateGraphData(data) {
 
     $("#" + data.id + "latency").html(lat_string)
     $("#" + data.id + "state").html("State: " + data.state)
-    $("#" + data.id + "ect").html("ECT: " + data.ect)
+    if (data.ect != "disabled") {
+        $("#" + data.id + "ect").html("ECT: " + data.ect.toFixed(2) + " m")
+    }
+    else {
+        $("#" + data.id + "ect").html("ECT: " + data.ect)
+    }
 
     // calculate the max value in the data. Add 1 so it is never 0
     var max = Math.max.apply(null, graph.data.datasets[0].data)

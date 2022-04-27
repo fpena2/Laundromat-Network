@@ -29,11 +29,11 @@ class ModelDecorator:
         self.regressor_window.append(ect_pred)
 
     def get_status(self):
-        if len(self.window) == 0:
-            return "Unknown"
+        if len(self.classifier_window) == 0:
+            return "Unknown", -1
 
         status = mode(self.classifier_window)[0][0]
-        ect = self.regressor_window[-1]
+        ect = np.mean(self.regressor_window)
         return status, ect
 
 class ModelManager:

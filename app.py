@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, current_app, render_template, g
 from flask_socketio import SocketIO, send, emit
 from engineio.payload import Payload
 
+import time
 import sys, logging, json, asyncio, time, os, pickle
 
 from laundromats import LocationFactory
@@ -19,10 +20,14 @@ Payload.max_decode_packets = 1500
 socketio = SocketIO(app)
 
 # model init
-PREDICTION = True
-classifier_path = os.path.join("models", "gpc.pkl") 
+PREDICTION = False
+model_name = "rf_model"
+classifier_path = os.path.join("models", f"{model_name}.pkl") 
 regressor_path = os.path.join("models", "gamma_regressor.pkl")
 model_manager = ModelManager(classifier_path, regressor_path)
+
+write_path = os.path.join("timer", f"{model_name}_timer.csv")
+writer = open(write_path, "a")
 
 class DeviceInfo:
     id = ""
@@ -78,16 +83,21 @@ def get_device_power_usage(laundromatid):
         device["power_level"] = dev.current
         device["recorded_time"] = dev.time
         #if det_manager.changed_in_window(dev.id):
+        #    start_time = time.time()
         #    device["state"] = convert_to_str((dev.status + 1)%3) 
+        #    end_time = time.time()
         #    dev.status = device["state"]
         #    laundromat_info[laundromatid][dev.id] = dev
         #else:
         #    device["state"] = convert_to_str(dev.status)
-        #device["state"] = "OFF" if dev.status == 0 else "ON"
+        device["state"] = "OFF" if dev.status == 0 else "ON"
         if PREDICTION:
+            start_time = time.time()
             state, ect = model_manager.get_status(dev.id)
+            end_time = time.time()
+            writer.write(f"{start_time},{end_time}\n")
             device["state"] = state 
-            device["ect"] = ect 
+            device["ect"] = ect/60 
         else:
             device["state"] = "OFF" if dev.status == 0 else "ON"
             device["ect"] = "disabled"
