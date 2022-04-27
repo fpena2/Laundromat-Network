@@ -8,12 +8,15 @@ ModeEnum = {
     HTTP: 1,
 }
 
-MODE = ModeEnum.SOCKET
+MODE = ModeEnum.HTTP;
 
 devices = new Map();
-current_lm_id = ""
-reqInterval = null
-clickable = true
+current_lm_id = "";
+reqInterval = null;
+clickable = true;
+var global_avg_lat = 0.0;
+var N_ = 0;
+var disconnected_cnt = 0;
 
 $("body").ready(function() {
     console.log("running");
@@ -28,6 +31,11 @@ $("body").ready(function() {
             for (var i = 0; i < data.devices.length; i ++) {
                 updateGraphData(data.devices[i])
             }
+            console.log("global average = ", global_avg_lat/N_);
+            console.log("number disconnected = ", disconnected_cnt);
+            global_avg_lat = 0.0;
+            N_ = 0;
+            disconnected_cnt = 0;
         });
     }
 
@@ -101,9 +109,14 @@ function requestDevicePowerUsage() {
             url: "/devicePowerUsageRequest",
             data: data
         }).done(function(response) {
+            num_devices_ = response.devices.length
             for (var i = 0; i < response.devices.length; i ++) {
                 updateGraphData(response.devices[i])
             }
+            console.log("global average = ", global_avg_lat/N_);
+            global_avg_lat = 0.0;
+            N_ = 0;
+            disconnected_cnt = 0;
         });
     }
 }
@@ -139,7 +152,10 @@ function updateGraphData(data) {
     }
     graph.lat_avgs.push(difference)
     var avg_lat = graph.lat_avgs.reduce((a, b) => a + b) / graph.lat_avgs.length
+    N_ += 1;
+    global_avg_lat += avg_lat;
     var avg_lat = (Math.round(avg_lat * 100) / 100).toFixed(2)
+    // global_avg_lat += (1 - 1/N_)*global_avg_lat + (1/N_)*avg_lat;
 
     var lat_string = "latency: " + avg_lat + " s"
 
@@ -150,6 +166,7 @@ function updateGraphData(data) {
 
     if (avg_lat > 15) {
         lat_string += " (appears to be disconnected)"
+        disconnected_cnt += 1;
     }
 
     $("#" + data.id + "latency").html(lat_string)

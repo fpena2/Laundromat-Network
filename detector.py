@@ -1,15 +1,82 @@
 from abc import ABC, abstractmethod
 from collections import deque
+from scipy.stats import mode
 
 import sdt.changepoint
 import numpy as np
+import time, os, pickle
+
+class ModelDecorator:
+    def __init__(self, classifier, regressor, base_ts=time.time(), window_size=3):
+        self.classifier_window = deque([], maxlen=window_size)
+        self.regressor_window = deque([], maxlen=window_size)
+        self.window_size = window_size
+        self.classifier = classifier
+        self.regressor = regressor
+        self.base_ts = base_ts
+        self.N = 0
+        self.mu = 0
+
+    def step(self, x):
+        self.N += 1
+        alpha = 1.0/self.N
+        self.mu = (alpha)*x[1] + (1 - alpha)*self.mu # x[1] = current
+        secs = x[0] - self.base_ts # x[0] = device timestamp
+        x_ = np.hstack([x, secs, self.mu]).reshape(1, -1)
+        status_pred = self.classifier.predict(x_)[0]
+        ect_pred = self.regressor.predict(x_[:,1:])[0]
+        self.classifier_window.append(status_pred)
+        self.regressor_window.append(ect_pred)
+
+    def get_status(self):
+        if len(self.window) == 0:
+            return "Unknown"
+
+        status = mode(self.classifier_window)[0][0]
+        ect = self.regressor_window[-1]
+        return status, ect
+
+class ModelManager:
+    def __init__(self, classifier_path, regressor_path):
+        self.models = {}
+        self.classifier_path = classifier_path
+        self.regressor_path = regressor_path
+        self.classifier, self.regressor = None, None
+
+        with open(classifier_path, "rb") as fid:
+            self.classifier = pickle.load(fid)
+
+        with open(regressor_path, "rb") as fid:
+            self.regressor = pickle.load(fid)
+
+    def add_detector(self, key):
+        self.models[key] = ModelDecorator(self.classifier, self.regressor, base_ts=time.time())
+
+    def remove_detector(self, key):
+        del self.models[key]
+
+    def get_status(self, key):
+        if key not in self.models:
+            return "not found"
+        model = self.models[key]
+        return model.get_status()
+
+    def step(self, key, x):
+        if key not in self.models:
+            return
+
+        self.models[key].step(x)
+
+    def is_new_device(self, key):
+        return key not in self.models
+
 
 class BaseDetector:
     def __init__(self, threshold, smoother=None, window=[], window_size=128, min_samples=150):
         self._window = deque(window, maxlen=window_size)
         self._window_size = window_size
         self._smoother = smoother
-        self._triggered = False
+        self._is_triggered = False
         self._min_samples = min_samples
         self._threshold = threshold
         self._N = 0 # num_samples seen so far
@@ -127,50 +194,52 @@ class ThresholdDetector(BaseDetector):
         self._N = 0
         self._is_reset = True
 
-
 class OnlineBayesDetector(BaseDetector):
-    def __init__(self, threshold, min_samples, inv_lambda = 25.0, smoother=None, window=[], window_size=128):
+    def __init__(self, threshold, min_samples, inv_lambda = 250.0, smoother=None, window=[], window_size=20):
         super().__init__(threshold, smoother=smoother, window=window, window_size=window_size, min_samples=min_samples)
         self._detector = sdt.changepoint.BayesOnline(hazard_params={"time_scale": inv_lambda})
+        self._window = deque([], maxlen=window_size)
         self._ts = 0
-        self._next_check = 0
-        self._changepoints = []
+        self._inv_lambda = inv_lambda
+        self._N = 0
+        self._mu = 0
 
     def step(self, data_pt):
         super().step(data_pt)
         self._N += 1
-        self._ts += 1
+        self._mu += data_pt
+        self._window.append(data_pt)
         estimated_time_till_next = 0.0
         confidence = 0.0
 
-        #if self._N > self._min_samples:
+        #avg = self._mu / self._N
+        #self._detector.update(avg)
+        #self._detector.update(data_pt - avg)
         self._detector.update(data_pt)
-            #prob = self._detector.get_probabilities(self._window_size)
+        #self._detector.update(data_pt - np.mean(self._window))
+        prob = self._detector.get_probabilities(5)
 
-            #if len(prob) > 1 and np.any(prob[1:] > 0.8):
-            #    return True, estimated_time_till_next, np.max(prob[1:])
-        #return False, estimated_time_till_next, confidence
-        return True, estimated_time_till_next, confidence
+        if (len(prob) >= 1) and np.any(prob[1:] > self._threshold):
+            self._is_triggered = True
+            self._detector.reset()
+            return True, estimated_time_till_next, confidence
+        return False, estimated_time_till_next, confidence
 
     def changed_in_window(self):
-        if self._N > self._min_samples:
-            window = np.array(self._window)
-            changes = self._detector.find_changepoints(window, past=4, prob_threshold=self._threshold)
-       
-            if len(changes) > 0:
-                self._changepoints.append(changes[-1])
-                #self._N = 0
-                self._detector.reset()
-                return True
+        if self._is_triggered:
+            self._is_triggered = False
+            return True
         return False
 
+
 class DetectorManager:
-    def __init__(self, threshold, min_samples, det_type="threshold", detector_map={}):
+    def __init__(self, threshold, min_samples, det_type="threshold", detector_map={}, **kwargs):
         self._detector_map = detector_map 
         self._threshold = threshold
         self._min_samples = min_samples
+        self._detector_args = kwargs
 
-        if det_type.lower().strip() not in ("threshold", "bayes", "pelt"):
+        if det_type.lower().strip() not in ("threshold", "bayes", "pelt"): #, "rf", "gpc", ""):
             raise ValueError("invalid detector type")
         self._det = ThresholdDetector
         if det_type.lower() == "bayes":
@@ -183,7 +252,7 @@ class DetectorManager:
 
     def add_detector(self, key):
         if key not in self._detector_map:
-            self._detector_map[key] = self._det(self._threshold, self._min_samples)
+            self._detector_map[key] = self._det(self._threshold, self._min_samples, **self._detector_args)
 
     def step(self, key, data_pt):
         if key not in self._detector_map:
@@ -197,23 +266,21 @@ class DetectorManager:
         del self._detector_map[key]
 
     def changed_in_window(self, key):
-        #if key in self._detector_map:
-        #    return self._detector_map[key].changed_in_window()
-        return self._detector_map[key].changed_in_window()
-        #else:
-        #    print("no key")
-        #    return False
+        if key in self._detector_map:
+            return self._detector_map[key].changed_in_window()
+        else:
+            return False
 
-det_manager = DetectorManager(0.7, 10, det_type="threshold")
+det_manager = DetectorManager(0.7, 10, det_type="bayes")
 
 if __name__ == "__main__":
-    threshold = 0.7
-    min_samples = 1
+    threshold = 0.75
+    min_samples = 10
     grad_det = ThresholdDetector(threshold, min_samples)
     assert grad_det.threshold == threshold, "wrong threshold in ThresholdDetector"
     bayes_det = OnlineBayesDetector(threshold, min_samples)
     assert bayes_det.min_samples == min_samples, "wrong min_samples in BayesDetector"
-    det_manager = DetectorManager(threshold, min_samples, det_type="pelt")
+    det_manager = DetectorManager(threshold, min_samples, det_type="bayes", inv_lambda=245)
     det_manager.add_detector("Thread-1")
     det_manager.add_detector("Thread-2")
     assert det_manager.is_new_device("Thread-1") == False, "is_new_device() wrong implementation"
@@ -221,16 +288,18 @@ if __name__ == "__main__":
 
     big = False
     for i in range(1000):
-        x = 0.5 
+        x = np.random.random() 
 
         if big:
-            x = 6.0 
+            x = 6.0 * np.random.random()
 
         if i % 100 == 0:
             big = not big
+        #print(x)
         changed, eta, confidence = det_manager.step("Thread-1", x)
         changed_in_window = det_manager.changed_in_window("Thread-1")
         if changed_in_window:
             print("changepoint at", i)
+            time.sleep(1)
     det_manager.remove_detector("Thread-2")
     assert det_manager.is_new_device("Thread-2") == True, "wrong remove_detector"

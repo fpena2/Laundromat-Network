@@ -2,10 +2,10 @@ from flask import Flask, jsonify, request, current_app, render_template, g
 from flask_socketio import SocketIO, send, emit
 from engineio.payload import Payload
 
-import logging, json, asyncio, time
+import sys, logging, json, asyncio, time, os, pickle
 
 from laundromats import LocationFactory
-from detector import det_manager
+from detector import det_manager, ModelDecorator, ModelManager
 
 # server config
 app = Flask(__name__)
@@ -15,8 +15,14 @@ app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
 
 # socketio config
-Payload.max_decode_packets = 500
+Payload.max_decode_packets = 1500
 socketio = SocketIO(app)
+
+# model init
+PREDICTION = True
+classifier_path = os.path.join("models", "gpc.pkl") 
+regressor_path = os.path.join("models", "gamma_regressor.pkl")
+model_manager = ModelManager(classifier_path, regressor_path)
 
 class DeviceInfo:
     id = ""
@@ -38,25 +44,30 @@ def convert_to_str(status):
 
 def record_data(data):
     global laundromat_info
-    
+
     dev = DeviceInfo()
     dev.id = data.get("ID")
     dev.current = data.get("current")
     dev.time = data.get("time")
     dev.owner = data.get("owner")
-    dev.status = 0
+    dev.status = 1 if float(dev.current) > 0.08 else 0
 
     if not dev.owner in laundromat_info:
         laundromat_info[dev.owner] = {}
 
     laundromat_info[dev.owner][dev.id] = dev
 
-    if det_manager.is_new_device(dev.id):
-        det_manager.add_detector(dev.id)
-    det_manager.step(dev.id, float(dev.current))
+    if PREDICTION:
+        #if det_manager.is_new_device(dev.id):
+        #    det_manager.add_detector(dev.id)
+        #det_manager.step(dev.id, float(dev.current))
+        if model_manager.is_new_device(dev.id):
+            model_manager.add_detector(dev.id)
+        model_manager.step(dev.id, [float(dev.time), float(dev.current)])
 
 def get_device_power_usage(laundromatid):
     global laundromat_info
+    global model
 
     data = {}
     data["devices"] = []
@@ -66,12 +77,20 @@ def get_device_power_usage(laundromatid):
         device["id"] = dev.id
         device["power_level"] = dev.current
         device["recorded_time"] = dev.time
-        if det_manager.changed_in_window(dev.id):
-            device["state"] = convert_to_str((dev.status + 1)%3) 
-            dev.status = device["state"]
-            laundromat_info[laundromatid][dev.id] = dev
+        #if det_manager.changed_in_window(dev.id):
+        #    device["state"] = convert_to_str((dev.status + 1)%3) 
+        #    dev.status = device["state"]
+        #    laundromat_info[laundromatid][dev.id] = dev
+        #else:
+        #    device["state"] = convert_to_str(dev.status)
+        #device["state"] = "OFF" if dev.status == 0 else "ON"
+        if PREDICTION:
+            state, ect = model_manager.get_status(dev.id)
+            device["state"] = state 
+            device["ect"] = ect 
         else:
-            device["state"] = convert_to_str(dev.status)
+            device["state"] = "OFF" if dev.status == 0 else "ON"
+            device["ect"] = "disabled"
 
         data["devices"].append(device)
 
@@ -113,7 +132,6 @@ def recommend_laundromat():
 @app.route("/laundromatlist", methods = ["GET"])
 def get_laundromatlist():
     # prune laundromats that have no active devices
-    print(laundromat_info.keys())
     for (lmid, devices) in list(laundromat_info.items()):
         for (devid, dev) in list(devices.items()):
             current_time = time.time()
@@ -122,11 +140,8 @@ def get_laundromatlist():
         if len(devices) == 0:
             del laundromat_info[lmid]
 
-    print(laundromat_info.keys())
-
     data = {}
     data["laundromats"] = list(laundromat_info.keys())
-    print(data)
     return data, 200
 
 @app.route("/devicePowerUsageRequest", methods = ["GET"])
@@ -161,7 +176,13 @@ def page_not_found(error):
     response = {"message": "failure"}
     return response, 404
 
+def start_server(prediction=False):
+   global PREDICTION
+   PREDICTION = prediction
+   socketio.run(app, host="0.0.0.0") # ssl_context="adhoc")
+
 if __name__ == "__main__":
    print("===== Starting the server =======")
+   print(sys.argv)
    socketio.run(app, host="0.0.0.0") # ssl_context="adhoc")
    #app.run(host = "0.0.0.0", port = 8080)

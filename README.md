@@ -1,8 +1,13 @@
 # Start the gunicorn server
-`gunicorn --worker-class eventlet -w 1 app:app`
+A shell script has been provided to start the server: `start.sh`
+
+Execute the command
+`./start.sh` to begin the server.
+The script must be given executable rights if that has not already been done
 
 # Leave gunicorn process running in background
-`source ./run_script & disown`
+To leave the server running in the background on the same terminal
+`source ./start.sh & disown`
 
 # Killing all gunicorn disowned processes
 `pkill -f gunicorn`
