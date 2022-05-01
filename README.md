@@ -17,8 +17,13 @@ We propose to address latency in the following aspects:
 ## Parts List and Required Technology:
 ### Hardware:
 * Raspberry Pi with internet capabilities
-* Current and voltage transformers 
+* Peripherals
+    * ADS1115 16-bit precision ADC
+* Current transformer 
+    * PZCT-02 100A Split Core Current Transformer
 * Resistors, breadboard, cables, soldering iron, etc. 
+    * 100 Ohms resistor x 1
+
 ### Software:
 * Amazon server 
 * Google Maps API
