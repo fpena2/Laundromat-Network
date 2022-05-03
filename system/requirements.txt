@@ -1,0 +1,8 @@
+requests==2.27.0
+adafruit_ads1x15==1.0.2
+board==1.0
+boto3==1.21.37
+gevent_socketio==0.3.6
+matplotlib==3.5.1
+numpy==1.22.3
+pandas==1.4.2
