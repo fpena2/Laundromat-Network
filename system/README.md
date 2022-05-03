@@ -1,5 +1,6 @@
 ## Configuration 
 * Use Raspberry Pi OS with desktop (Debian version: 11 (bullseye) or newer) 
+* Python 3.10 or newer
 * Enable the I2C interface on the Raspberry Pi using `raspi-config`
 * Install the following libraries:
     ```
@@ -23,7 +24,7 @@ $ python run.py
 * For development mode use the ```-d``` flag 
     * This mode will force the device to output data to a ```test.csv``` file
 
-The multithread application can spawn 10 clones which send data via the HTTP interface with the following command: 
+The multithread application can spawn any number of clones.  The following example will activate 10 threads to send data via HTTP:
 ```
 $ python clone.py --pool 10 --type 1
 ```
