@@ -4,9 +4,9 @@ import csv
 import numpy as np
 from pathlib import Path
 import argparse
-import threading
 from threading import Lock, Thread
 import string
+import random
 
 # Add libs path
 main_dir = Path(__file__).parents[1]
@@ -49,7 +49,9 @@ def work(name):
     while start < template_size:
         # Send data
         utime = str(int(time.time()))
-        current = str(template[start][1])
+        current = float(str(template[start][1]))
+        current += random.uniform(0.01, 0.3)
+        current = str(current)
         res = cObj.send(utime, current, name, owner)
         # Update tracker
         if res > 0:
@@ -61,10 +63,9 @@ def work(name):
         # Re-start
         if start >= template_size:
             start = 0
-        # Debug
         # Log if more than 5% have disconnected
         if len(track.keys()) > 0.05 * opts.pool:
-            f = open("res.log", "w")
+            f = open("res.log", "a")
             print(
                 f"Type: {opts.type}, Pool: {opts.pool}, Len: {len(track.keys())}",
                 file=f)

@@ -44,6 +44,7 @@ class SocketIO(threading.local):
                 self.sio.connect(self.url)
             except Exception as e:
                 print("--EXCEPTION: {e} (re-trying...)")
+                self.status = 1
             else:
                 self.isConnected = True
             time.sleep(5)
@@ -66,6 +67,7 @@ class HTTPIO(threading.local):
         self.url = f"http://{url}"
 
     def send(self, time_unix, current_amps, id, owner):
+        res = 0
         msg = {
             'time': time_unix,
             'current': current_amps,
@@ -73,7 +75,6 @@ class HTTPIO(threading.local):
             'owner': owner
         }
         response = requests.post(self.url, msg)
-        res = 0
         if response.status_code != 200:
             res = 1
         print(f"Thread: {id} -> {response.status_code}")
