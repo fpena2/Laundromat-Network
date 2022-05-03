@@ -1,0 +1,8 @@
+myenv/*
+__pycache__/*
+notes/*
+
+*.log
+*.py[co]
+.env
+*.swp

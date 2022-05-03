@@ -1,0 +1,133 @@
+* {
+    font-family: Verdana, Geneva, sans-serif;
+    color: rgb(0, 170, 35);
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    height: 100%;
+    background-color: rgb(21, 25, 31);
+    overflow: visible;
+    z-index: 0;
+    -webkit-backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    -webkit-transform: translate3d(0,0,0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
+    transform: translate3d(0,0,0);
+    transform: translateZ(0);
+}
+
+.header {
+    font-size: 50px;
+    color: rgb(0, 115, 10);
+    text-align: center;
+}
+
+.lm_selection_container {
+    position: absolute;
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+
+    transform: translate3d(0, 0, 0);
+    transition: transform 1s ease-in-out;
+}
+
+.lm_selection_container.out {
+    transform: translate3d(-100%, 0, 0);
+}
+
+.lm_list {
+
+}
+
+.lm_name {
+}
+
+.lm_name:hover {
+}
+
+.lm_title {
+    font-size: 20;
+    font-weight: bold;
+    text-align: center;
+    flex-basis: 100%;
+}
+
+.button {
+    background-color: rgb(46, 57, 74);
+
+    border-radius: 10px;
+    width: 300px;
+    height: 20px;
+    margin: 20px;
+    padding: 10px;
+
+    flex-basis: 100%;
+}
+
+.button:hover {
+    background-color: rgb(60, 80, 100);
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+.device_list_container {
+    position: absolute;
+
+    width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+
+    transform: translate3d(0, 0, 0);
+    transition: transform 1s ease-in-out;
+}
+
+.device_list_container.out {
+    transform: translate3d(-100%, 0, 0);
+}
+
+.devices_container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    width: 100%;
+}
+
+.devcontainer {
+    background-color: rgb(46, 57, 74);
+
+    width: 250px;
+    border-radius: 10px;
+    margin: 30px;
+    padding: 10px;
+}
+
+#map {
+  height: 40%;
+  margin: 20px;
+}
+
+#route_planner {
+    color: white;
+}
+
+.header-recs {
+    width: 100%;
+    color: white;
+    text-align: center;
+}

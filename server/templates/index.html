@@ -1,0 +1,54 @@
+<!DOCTYPE HTML>
+
+<head>
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=0"/>
+    <!-- Map API -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <link rel="stylesheet" type="text/css" href="static/index.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="static/index.js"></script>
+</head>
+
+<body>
+
+    <div class="header">Laundromat Network System</div>
+
+    <div id="lm_selection_container" class="lm_selection_container">
+        <b>Select a laundromat:</b>
+        <div id="lm_list" class="lm_list">
+            Loading laundromat list from server...
+        </div>
+    </div>
+
+    <div id="device_list_container" class="device_list_container out">
+        <div id="return_button" class="button">Return to laundromat selection</div>
+        <div id="lm_title" class="lm_title"></div>
+        <div id="devices" class="devices_container">
+            waiting for devices to begin transmitting data...
+        </div>
+    </div>
+
+    <br/>    
+    <!--
+    <div>
+        <div class="header-recs">
+            <strong id="router_planner">Mode of Travel: </strong>
+        </div>    
+        <select id="mode" onchange="display_route();">
+            <option value="DRIVING">Driving</option>
+            <option value="WALKING">Walking</option>
+            <option value="BICYCLING">Bicycling</option>
+            <option value="TRANSIT">Transit</option>
+        </select>
+    </div>
+    <div id="map"></div>
+
+    <!-- Async script executes immediately and must be after any DOM elements used in callback. ->
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBsHRTXaHxhpx0ZDGHiczX7XMfHHYO-x2w&callback=init_map&v=weekly" async defer 
+    ></script>
+    -->
+</body>
+
