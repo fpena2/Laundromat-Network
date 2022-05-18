@@ -1,6 +1,6 @@
 # Laundromat-Network
 
-Currently, laundromat users don't have a way to monitor when laundry machines are available for usage.  The usual outcome is returning home with a basket full of unlaundered clothes after finding out that all machines were being used.  As a solution to this problem, we introduce the Laundromat Network Monitoring system.  The project is composed of three main parts: embedded system, server, artificial intelligence, and a user interface. 
+Currently, laundromat users don't have a way to monitor when laundry machines are available for usage.  The usual outcome is returning home with a basket full of un-laundered clothes after finding out that all machines were being used.  As a solution to this problem, we introduce the Laundromat Network Monitoring system.  The project is composed of three main parts: embedded system, server, artificial intelligence, and a user interface. 
 
 An embedded device, controlled by a Raspberry Pi, will feature non-intrusive methods for monitoring electrical current  drawn by laundry machines in real-time.  The data will be uploaded to the cloud where analysis on power consumption will be performed.
 
@@ -29,7 +29,17 @@ We propose to address latency in the following aspects:
 * Google Maps API
 
 ## User Interface 
-<img src="./media/website.png" style="width: 50%;">
+<img src="./media/website.png" style="width: 90%;"></img>
 
 ## System
-<img src="./media/Pi_and_ADC.jpg" style="width: 50%;">
+<img src="./media/Pi_and_ADC.jpg" style="width: 90%;"></img>
+
+### LG Washing Machine with Inverter Direct Drive
+<img src="./media/washing_stages.png" style="width: 50%;"></img>
+
+* (A) “Sensing” cycle in which the machine
+arranges the textiles. 
+* (B) “Washing” cycle. 
+* (C) First “drying”
+cycle. 
+* (D) Second “drying” cycle.
