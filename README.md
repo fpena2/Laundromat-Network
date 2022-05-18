@@ -27,3 +27,9 @@ We propose to address latency in the following aspects:
 ### Software:
 * Amazon server 
 * Google Maps API
+
+## User Interface 
+<img src="./media/website.png" style="width: 50%;">
+
+## System
+<img src="./media/Pi_and_ADC.jpg" style="width: 50%;">
